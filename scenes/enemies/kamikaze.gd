@@ -41,7 +41,7 @@ func self_destruct() -> void:
 	exp_node.blast_color = Color(1.0, 0.2, 0.1)
 	get_parent().add_child(exp_node)
 	
-	AudioManager.play_sfx("explosion", 0.15, 3.0)
+	AudioManager.play_sfx("heavy_explosion", 0.1, 2.0)
 	
 	# Damage player if in blast radius
 	if is_instance_valid(target_player):

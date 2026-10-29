@@ -42,7 +42,7 @@ func die() -> void:
 	exp_node.blast_color = Color(1.0, 0.3, 0.1)
 	get_parent().add_child(exp_node)
 	
-	AudioManager.play_sfx("explosion", 0.05, 5.0)
+	AudioManager.play_sfx("heavy_explosion", 0.05, 4.0)
 	GameManager.add_kill()
 	
 	# Boss drops rich loot

@@ -1,10 +1,12 @@
 extends Node
 
-# Audio Manager Autoload - handles music loops, sound effects pool, pitch variation
+# Audio Manager Autoload - Advanced Cyberpunk Audio Director
+# Features: Sound throttling (prevents WebAudio overload), voice limiter,
+# scrap collection combo pitch escalator, and dynamic priority ducking.
 
 var bgm_player: AudioStreamPlayer
 var sfx_players: Array[AudioStreamPlayer] = []
-var max_sfx_channels: int = 12
+var max_sfx_channels: int = 10
 var sfx_index: int = 0
 
 var sound_streams: Dictionary = {}
@@ -12,16 +14,37 @@ var sound_streams: Dictionary = {}
 var music_muted: bool = false
 var sfx_muted: bool = false
 
+# Cooldowns per sound type to prevent audio stutter / WebAudio clipping
+var sound_cooldowns: Dictionary = {
+	"laser": 0.045,
+	"railgun": 0.07,
+	"missile": 0.06,
+	"scrap": 0.035,
+	"explosion": 0.065,
+	"heavy_explosion": 0.09,
+	"shield_hit": 0.09,
+	"ui_hover": 0.04,
+	"upgrade_select": 0.05,
+	"emp_blast": 0.1,
+	"level_up": 0.15,
+	"victory": 0.2
+}
+var last_play_times: Dictionary = {}
+
+# Scrap pickup combo pitch escalator
+var scrap_combo: int = 0
+var scrap_combo_timer: float = 0.0
+
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	
 	# Music player
 	bgm_player = AudioStreamPlayer.new()
 	bgm_player.bus = "Master"
-	bgm_player.volume_db = -10.0
+	bgm_player.volume_db = -11.0
 	add_child(bgm_player)
 	
-	# SFX Players pool
+	# SFX Players pool (clamped to 10 to keep web browser CPU light)
 	for i in range(max_sfx_channels):
 		var p = AudioStreamPlayer.new()
 		p.bus = "Master"
@@ -32,6 +55,12 @@ func _ready() -> void:
 	load_sounds()
 	play_music()
 
+func _process(delta: float) -> void:
+	if scrap_combo_timer > 0.0:
+		scrap_combo_timer -= delta
+		if scrap_combo_timer <= 0.0:
+			scrap_combo = 0
+
 func load_sounds() -> void:
 	var files = {
 		"laser": "res://assets/audio/laser_fire.ogg",
@@ -40,9 +69,11 @@ func load_sounds() -> void:
 		"scrap": "res://assets/audio/scrap_pickup.ogg",
 		"level_up": "res://assets/audio/level_up.ogg",
 		"explosion": "res://assets/audio/explosion.ogg",
+		"heavy_explosion": "res://assets/audio/heavy_explosion.ogg",
 		"emp_blast": "res://assets/audio/emp_blast.ogg",
 		"shield_hit": "res://assets/audio/shield_hit.ogg",
 		"upgrade_select": "res://assets/audio/upgrade_select.ogg",
+		"ui_hover": "res://assets/audio/ui_hover.ogg",
 		"victory": "res://assets/audio/victory.ogg",
 		"game_over": "res://assets/audio/game_over.ogg"
 	}
@@ -50,6 +81,7 @@ func load_sounds() -> void:
 		var path = files[key]
 		if ResourceLoader.exists(path):
 			sound_streams[key] = load(path)
+		last_play_times[key] = -999.0
 
 func play_music() -> void:
 	if music_muted:
@@ -66,18 +98,36 @@ func _on_music_finished() -> void:
 	if not music_muted and bgm_player.stream:
 		bgm_player.play()
 
-func play_sfx(sound_name: String, pitch_rnd: float = 0.1, volume_offset_db: float = 0.0) -> void:
+func play_sfx(sound_name: String, pitch_rnd: float = 0.08, volume_offset_db: float = 0.0) -> void:
 	if sfx_muted:
 		return
 	if not sound_streams.has(sound_name):
 		return
 		
+	var now = Time.get_ticks_msec() / 1000.0
+	var cd = sound_cooldowns.get(sound_name, 0.03)
+	var last_time = last_play_times.get(sound_name, -999.0)
+	
+	# Drop request if within cooldown window to protect audio bus
+	if now - last_time < cd:
+		return
+	last_play_times[sound_name] = now
+	
+	# Find next available player or round-robin
 	var player = sfx_players[sfx_index]
 	sfx_index = (sfx_index + 1) % max_sfx_channels
 	
 	player.stream = sound_streams[sound_name]
-	player.volume_db = -6.0 + volume_offset_db
-	player.pitch_scale = randf_range(1.0 - pitch_rnd, 1.0 + pitch_rnd)
+	
+	# Scrap combo pitch scaling
+	var base_pitch: float = 1.0
+	if sound_name == "scrap":
+		scrap_combo += 1
+		scrap_combo_timer = 0.45
+		base_pitch = clampf(1.0 + float(scrap_combo) * 0.035, 1.0, 1.65)
+	
+	player.volume_db = -7.0 + volume_offset_db
+	player.pitch_scale = base_pitch + randf_range(-pitch_rnd, pitch_rnd)
 	player.play()
 
 func toggle_music() -> bool:
