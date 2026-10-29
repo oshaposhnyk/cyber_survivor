@@ -38,27 +38,48 @@ func _process(delta: float) -> void:
 
 func _draw() -> void:
 	var frac = current_progress / capture_time
-	var base_col = Color(0.2, 1.0, 0.55) if is_player_inside else Color(0.2, 0.8, 1.0, 0.6)
+	var base_col = Color(0.2, 1.0, 0.55) if is_player_inside else Color(0.2, 0.85, 1.0, 0.65)
 	
-	# Outer capture circle zone
-	draw_arc(Vector2.ZERO, capture_radius, 0, TAU, 36, Color(base_col.r, base_col.g, base_col.b, 0.35), 2.0)
+	# 1. Concentric Cyber-Grid Rings
+	draw_arc(Vector2.ZERO, capture_radius * 0.35, 0, TAU, 24, Color(base_col.r, base_col.g, base_col.b, 0.2), 1.0)
+	draw_arc(Vector2.ZERO, capture_radius * 0.7, 0, TAU, 28, Color(base_col.r, base_col.g, base_col.b, 0.25), 1.0)
+	draw_arc(Vector2.ZERO, capture_radius, 0, TAU, 36, Color(base_col.r, base_col.g, base_col.b, 0.45), 2.0)
 	
-	# Progress arc
+	# 2. Sweeping Sonar / Radar Beam
+	var sweep_angle = pulse_time * 2.2
+	var sweep_end = Vector2(cos(sweep_angle), sin(sweep_angle)) * capture_radius
+	draw_line(Vector2.ZERO, sweep_end, Color(base_col.r, base_col.g, base_col.b, 0.6), 2.0)
+	
+	# 3. Rotating Central Hex-Brackets around the core pod
+	var hex_rot = pulse_time * 0.6
+	for i in range(6):
+		var ha = hex_rot + float(i) * (TAU / 6.0)
+		var hp1 = Vector2(cos(ha), sin(ha)) * 32.0
+		var hp2 = Vector2(cos(ha + 0.5), sin(ha + 0.5)) * 32.0
+		draw_line(hp1, hp2, base_col, 2.5)
+	
+	# 4. Progress Arc and Holographic Sector Fill
 	if frac > 0.0:
-		var fill_col = Color(0.1, 1.0, 0.6, 0.85)
+		var fill_col = Color(0.1, 1.0, 0.55, 0.9)
 		draw_arc(Vector2.ZERO, capture_radius, -PI * 0.5, -PI * 0.5 + TAU * frac, 36, fill_col, 5.0)
-		draw_circle(Vector2.ZERO, capture_radius * frac, Color(0.1, 1.0, 0.5, 0.06))
+		draw_circle(Vector2.ZERO, capture_radius * frac, Color(0.1, 1.0, 0.5, 0.07))
 		
-	# Tech brackets & radar pings
-	var ping = fmod(pulse_time * 20.0, capture_radius)
-	draw_arc(Vector2.ZERO, ping, 0, TAU, 28, Color(base_col.r, base_col.g, base_col.b, 0.25 * (1.0 - ping / capture_radius)), 1.5)
+	# 5. Digital Uplink Stream Particles toward Player when inside
+	var player = GameManager.player_node
+	if is_player_inside and is_instance_valid(player):
+		var to_p = player.global_position - global_position
+		for i in range(5):
+			var t_node = fmod(pulse_time * 1.8 + float(i) * 0.2, 1.0)
+			var stream_pos = to_p * t_node + Vector2(sin(pulse_time * 6.0 + i) * 6.0, cos(pulse_time * 6.0 + i) * 6.0)
+			draw_circle(stream_pos, 2.8, Color(0.2, 1.0, 0.6, 0.85))
+			draw_line(stream_pos, stream_pos - to_p.normalized() * 12.0, Color(0.2, 1.0, 0.6, 0.5), 1.5)
 	
-	# Corner crosshairs
+	# 6. Corner Targeting Reticles
 	for i in range(4):
 		var a = float(i) * (PI * 0.5)
-		var p1 = Vector2(cos(a), sin(a)) * (capture_radius - 8.0)
-		var p2 = Vector2(cos(a), sin(a)) * (capture_radius + 8.0)
-		draw_line(p1, p2, base_col, 2.0)
+		var p1 = Vector2(cos(a), sin(a)) * (capture_radius - 10.0)
+		var p2 = Vector2(cos(a), sin(a)) * (capture_radius + 10.0)
+		draw_line(p1, p2, base_col, 2.5)
 
 func complete_capture() -> void:
 	var player = GameManager.player_node

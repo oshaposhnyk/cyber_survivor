@@ -29,24 +29,56 @@ func _ready() -> void:
 	drift_dir = Vector2(randf_range(-1, 1), randf_range(-1, 1)).normalized() * randf_range(12.0, 24.0)
 
 func _physics_process(delta: float) -> void:
-	pulse_time += delta * 3.0
+	pulse_time += delta * 3.5
 	rotation += delta * 0.4
 	velocity = drift_dir
 	move_and_slide()
+	
+	# If damaged/overheating, jitter and arc
+	if current_health < max_health * 0.6:
+		var jitter_amt = (1.0 - current_health / max_health) * 4.0
+		if sprite:
+			sprite.offset = Vector2(randf_range(-jitter_amt, jitter_amt), randf_range(-jitter_amt, jitter_amt))
+	elif sprite and sprite.offset != Vector2.ZERO:
+		sprite.offset = Vector2.ZERO
+		
 	queue_redraw()
 	
 	if hit_flash > 0.0:
 		hit_flash -= delta
 		if hit_flash <= 0.0 and sprite:
-			sprite.modulate = Color.WHITE
+			sprite.modulate = Color(1.0, 0.45, 0.1, 1.0)
 
 func _draw() -> void:
-	# Warning hazard ring
-	var pulse = (sin(pulse_time) + 1.0) * 0.5
-	var col = Color(1.0, 0.45 + pulse * 0.4, 0.1, 0.8)
-	draw_arc(Vector2.ZERO, 26.0 + pulse * 4.0, 0, TAU, 16, col, 2.0)
-	# Core glow
-	draw_circle(Vector2.ZERO, 16.0, Color(1.0, 0.3, 0.05, 0.25 + pulse * 0.25))
+	var pulse = (sin(pulse_time * 2.0) + 1.0) * 0.5
+	var hp_frac = clampf(current_health / max(1.0, max_health), 0.0, 1.0)
+	var is_critical = hp_frac < 0.45
+	
+	var col = Color(1.0, 0.2, 0.1) if is_critical else Color(1.0, 0.5 + pulse * 0.3, 0.1)
+	
+	# 1. Industrial Outer Containment Ring with 4 Brackets
+	draw_arc(Vector2.ZERO, 30.0 + pulse * 3.0, 0, TAU, 24, Color(col.r, col.g, col.b, 0.7), 2.0)
+	for i in range(4):
+		var a = float(i) * (PI * 0.5) + pulse_time * 0.3
+		var p1 = Vector2(cos(a), sin(a)) * 26.0
+		var p2 = Vector2(cos(a), sin(a)) * 36.0
+		draw_line(p1, p2, col, 2.5)
+		
+	# 2. Glowing Hazard Core
+	var core_rad = 18.0 + (pulse * 4.0 if is_critical else pulse * 2.0)
+	draw_circle(Vector2.ZERO, core_rad, Color(col.r, col.g, col.b, 0.25 + pulse * 0.25))
+	draw_circle(Vector2.ZERO, core_rad * 0.5, Color(1.0, 1.0, 1.0, 0.85))
+	
+	# 3. Critical Arcs when damaged
+	if is_critical and randf() < 0.7:
+		for i in range(2):
+			var a1 = randf() * TAU
+			var a2 = a1 + randf_range(1.0, 2.2)
+			var pA = Vector2(cos(a1), sin(a1)) * 14.0
+			var pB = Vector2(cos(a2), sin(a2)) * 32.0
+			var mid = (pA + pB) * 0.5 + Vector2(randf_range(-8, 8), randf_range(-8, 8))
+			draw_line(pA, mid, Color(1.0, 0.9, 0.2, 0.9), 2.0)
+			draw_line(mid, pB, Color(1.0, 0.3, 0.1, 0.9), 2.0)
 
 func take_damage(amount: float, _source_pos: Vector2 = Vector2.ZERO) -> void:
 	current_health -= amount

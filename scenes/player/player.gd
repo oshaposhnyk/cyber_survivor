@@ -39,6 +39,7 @@ var dash_time_left: float = 0.0
 var dash_dir: Vector2 = Vector2.UP
 var afterimages: Array[Dictionary] = []
 var afterimage_spawn_timer: float = 0.0
+var dash_sparks: Array[Dictionary] = []
 
 # Weapon ports toggles
 var blaster_barrel_toggle: int = 0
@@ -104,18 +105,48 @@ func _draw() -> void:
 			draw_circle(s["pos"], s["size"], Color(col.r, col.g, col.b, a))
 			draw_line(s["pos"], s["pos"] - s["vel"] * 0.025, Color(1.0, 0.6, 0.1, a * 0.7), 1.5)
 			
-	# 3. Holographic Phase Shift Afterimages
+	# 3. Holographic Phase Shift Chromatic Aberration & Ghost Trail
+	# Draw lightning arcs between consecutive ghost images
+	if afterimages.size() > 1:
+		for i in range(afterimages.size() - 1):
+			var pA = to_local(afterimages[i]["pos"])
+			var pB = to_local(afterimages[i + 1]["pos"])
+			var mid = (pA + pB) * 0.5 + Vector2(randf_range(-8, 8), randf_range(-8, 8))
+			var arc_alpha = min(afterimages[i]["alpha"], afterimages[i + 1]["alpha"])
+			draw_line(pA, mid, Color(0.1, 0.95, 1.0, arc_alpha * 0.8), 2.0)
+			draw_line(mid, pB, Color(1.0, 0.2, 0.85, arc_alpha * 0.8), 2.0)
+			
 	for a in afterimages:
 		var rel_pos = to_local(a["pos"])
-		draw_set_transform(rel_pos, a["rot"] - rotation, Vector2.ONE)
-		var col = Color(0.2, 0.9, 1.0, a["alpha"] * 0.65)
-		var pts = PackedVector2Array([
-			Vector2(0, -20), Vector2(16, 14), Vector2(0, 7), Vector2(-16, 14)
+		var ship_pts = PackedVector2Array([
+			Vector2(0, -22), Vector2(18, 15), Vector2(0, 8), Vector2(-18, 15)
 		])
-		draw_polygon(pts, PackedColorArray([Color(0.1, 0.8, 1.0, a["alpha"] * 0.2)]))
-		draw_polyline(pts, col, 2.0)
-		draw_line(Vector2(-16, 14), Vector2(0, -20), col, 2.0)
+		
+		# Cyan channel offset (left)
+		draw_set_transform(rel_pos + Vector2(-3.5, 0).rotated(a["rot"]), a["rot"] - rotation, Vector2.ONE)
+		draw_polyline(ship_pts, Color(0.1, 0.95, 1.0, a["alpha"] * 0.7), 1.8)
+		draw_line(Vector2(-18, 15), Vector2(0, -22), Color(0.1, 0.95, 1.0, a["alpha"] * 0.7), 1.8)
+		
+		# Magenta channel offset (right)
+		draw_set_transform(rel_pos + Vector2(3.5, 0).rotated(a["rot"]), a["rot"] - rotation, Vector2.ONE)
+		draw_polyline(ship_pts, Color(1.0, 0.2, 0.85, a["alpha"] * 0.7), 1.8)
+		draw_line(Vector2(-18, 15), Vector2(0, -22), Color(1.0, 0.2, 0.85, a["alpha"] * 0.7), 1.8)
+		
+		# White glowing energy core
+		draw_set_transform(rel_pos, a["rot"] - rotation, Vector2.ONE)
+		draw_polygon(ship_pts, PackedColorArray([Color(0.2, 0.85, 1.0, a["alpha"] * 0.25)]))
+		draw_polyline(ship_pts, Color(1.0, 1.0, 1.0, a["alpha"] * 0.85), 1.2)
+		draw_line(Vector2(-18, 15), Vector2(0, -22), Color(1.0, 1.0, 1.0, a["alpha"] * 0.85), 1.2)
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+	# 4. Warp Speed Streaks during Dash
+	for sp in dash_sparks:
+		if sp["life"] > 0.0:
+			var rel = to_local(sp["pos"])
+			var a = clampf(sp["life"] / sp["max_life"], 0.0, 1.0)
+			var col: Color = sp["color"]
+			draw_circle(rel, 2.5 * a, Color(col.r, col.g, col.b, a))
+			draw_line(rel, rel - sp["vel"] * 0.035, Color(col.r, col.g, col.b, a * 0.8), 2.0)
 
 # Weapon Timers
 var blaster_timer: float = 0.0
@@ -245,6 +276,18 @@ func _physics_process(delta: float) -> void:
 				alive_after.append(a)
 		afterimages = alive_after
 		queue_redraw()
+		
+	# Update dash warp sparks
+	if dash_sparks.size() > 0:
+		var alive_dsp: Array[Dictionary] = []
+		for s in dash_sparks:
+			s["pos"] += s["vel"] * delta
+			s["vel"] = s["vel"].move_toward(Vector2.ZERO, 380.0 * delta)
+			s["life"] -= delta
+			if s["life"] > 0.0:
+				alive_dsp.append(s)
+		dash_sparks = alive_dsp
+		queue_redraw()
 
 func handle_movement(delta: float) -> void:
 	var input_vec = Vector2.ZERO
@@ -268,14 +311,18 @@ func handle_movement(delta: float) -> void:
 
 	if is_dashing:
 		dash_time_left -= delta
-		velocity = dash_dir * (move_speed * 3.2)
+		velocity = dash_dir * (move_speed * 3.3)
 		move_and_slide()
+		if sprite:
+			sprite.modulate = Color(0.4, 1.8, 3.0, 0.75)
 		afterimage_spawn_timer -= delta
 		if afterimage_spawn_timer <= 0.0:
-			afterimage_spawn_timer = 0.04
+			afterimage_spawn_timer = 0.035
 			spawn_afterimage()
 		if dash_time_left <= 0.0:
 			is_dashing = false
+			if sprite:
+				sprite.modulate = Color.WHITE
 	else:
 		velocity = input_vec * move_speed
 		move_and_slide()
@@ -292,14 +339,27 @@ func start_dash(input_vec: Vector2) -> void:
 	dash_timer = dash_cooldown
 	dash_dir = input_vec if input_vec.length() > 0.1 else Vector2.UP.rotated(rotation - PI / 2.0)
 	AudioManager.play_sfx("dash", 0.12, 1.5)
+	
+	# Spawn bursting warp streaks
+	for i in range(16):
+		var ang = (-dash_dir).angle() + randf_range(-0.9, 0.9)
+		var spd = randf_range(160.0, 360.0)
+		dash_sparks.append({
+			"pos": global_position,
+			"vel": Vector2(cos(ang), sin(ang)) * spd,
+			"life": randf_range(0.2, 0.38),
+			"max_life": 0.38,
+			"color": Color(0.1, 0.95, 1.0) if i % 2 == 0 else Color(1.0, 0.2, 0.85)
+		})
+		
 	spawn_afterimage()
 	
 	# Dash EMP shockwave pushes & stuns lightweight enemies nearby
-	for e in EnemyRegistry.in_radius(global_position, 95.0):
+	for e in EnemyRegistry.in_radius(global_position, 110.0):
 		if e.has_method("apply_slow"):
-			e.apply_slow(0.8, 0.4)
+			e.apply_slow(0.9, 0.35)
 		if e.has_method("take_damage"):
-			e.take_damage(25.0 * GameManager.doctrine_mod("dmg"))
+			e.take_damage(30.0 * GameManager.doctrine_mod("dmg"))
 
 func spawn_afterimage() -> void:
 	afterimages.append({

@@ -237,25 +237,83 @@ func apply_champion_aura() -> void:
 func _draw() -> void:
 	if not is_champion:
 		return
-	var pulse = (sin(champion_pulse_time) + 1.0) * 0.5
+	var pulse = (sin(champion_pulse_time * 1.5) + 1.0) * 0.5
 	var aura_col = Color(1.0, 0.8, 0.15)
+	var type_label = "HASTE"
 	match champion_type:
 		ChampionType.HASTE:
-			aura_col = Color(1.0, 0.8, 0.15)
+			aura_col = Color(1.0, 0.82, 0.15)
+			type_label = "HASTE"
 		ChampionType.JAMMER:
-			aura_col = Color(0.9, 0.2, 1.0)
+			aura_col = Color(0.92, 0.25, 1.0)
+			type_label = "JAMMER"
+			if randf() < 0.3 and sprite:
+				sprite.offset = Vector2(randf_range(-2, 2), randf_range(-2, 2))
 		ChampionType.MENDER:
-			aura_col = Color(0.2, 1.0, 0.45)
+			aura_col = Color(0.2, 1.0, 0.55)
+			type_label = "REPAIR"
 			
-	draw_arc(Vector2.ZERO, 38.0 + pulse * 6.0, 0, TAU, 24, Color(aura_col.r, aura_col.g, aura_col.b, 0.45), 2.0)
-	draw_circle(Vector2.ZERO, 38.0 + pulse * 6.0, Color(aura_col.r, aura_col.g, aura_col.b, 0.06))
+	var r_outer = 44.0 + pulse * 6.0
+	var r_inner = 30.0
 	
-	# Tech brackets above the enemy
-	var top_y = -34.0
-	draw_line(Vector2(-14, top_y), Vector2(-6, top_y - 6), aura_col, 2.0)
+	# 1. Outer Tech Ring with rotating notches
+	var rot_speed = champion_pulse_time * 0.8
+	draw_arc(Vector2.ZERO, r_outer, 0, TAU, 32, Color(aura_col.r, aura_col.g, aura_col.b, 0.55), 2.0)
+	draw_circle(Vector2.ZERO, r_outer, Color(aura_col.r, aura_col.g, aura_col.b, 0.05))
+	for i in range(8):
+		var a = rot_speed + float(i) * (TAU / 8.0)
+		var p1 = Vector2(cos(a), sin(a)) * (r_outer - 5.0)
+		var p2 = Vector2(cos(a), sin(a)) * (r_outer + 5.0)
+		draw_line(p1, p2, aura_col, 2.0)
+		
+	# 2. Inner Counter-Rotating Dashed Ring
+	for i in range(6):
+		var a0 = -rot_speed * 1.2 + float(i) * (TAU / 6.0)
+		draw_arc(Vector2.ZERO, r_inner, a0, a0 + 0.5, 8, Color(aura_col.r, aura_col.g, aura_col.b, 0.7), 1.5)
+		
+	# 3. Type-Specific Special VFX
+	match champion_type:
+		ChampionType.HASTE:
+			# Orbiting speed sparks
+			for i in range(3):
+				var sa = rot_speed * 2.5 + float(i) * (TAU / 3.0)
+				var sp_pos = Vector2(cos(sa), sin(sa)) * (r_outer + 8.0)
+				draw_circle(sp_pos, 2.5, Color.WHITE)
+				draw_line(sp_pos, sp_pos - Vector2(-sin(sa), cos(sa)) * 14.0, aura_col, 1.8)
+		ChampionType.JAMMER:
+			# Flickering EMP static arcs
+			if randf() < 0.6:
+				var a1 = randf() * TAU
+				var a2 = a1 + randf_range(0.8, 1.8)
+				var arc_p1 = Vector2(cos(a1), sin(a1)) * r_inner
+				var arc_p2 = Vector2(cos(a2), sin(a2)) * r_inner
+				var arc_mid = (arc_p1 + arc_p2) * 0.5 + Vector2(randf_range(-10, 10), randf_range(-10, 10))
+				draw_line(arc_p1, arc_mid, Color(1.0, 0.4, 1.0, 0.9), 1.8)
+				draw_line(arc_mid, arc_p2, Color.WHITE, 1.8)
+		ChampionType.MENDER:
+			# Floating emerald healing crosses
+			for i in range(3):
+				var cross_y = -18.0 - fmod(champion_pulse_time * 16.0 + float(i) * 12.0, 28.0)
+				var cross_x = sin(champion_pulse_time + float(i) * 2.0) * 20.0
+				var cp = Vector2(cross_x, cross_y)
+				draw_line(cp + Vector2(-3, 0), cp + Vector2(3, 0), aura_col, 1.8)
+				draw_line(cp + Vector2(0, -3), cp + Vector2(0, 3), aura_col, 1.8)
+
+	# 4. Floating Crown Bracket & Mini Health Bar above the enemy
+	var top_y = -38.0
+	draw_line(Vector2(-16, top_y), Vector2(-6, top_y - 6), aura_col, 2.0)
 	draw_line(Vector2(-6, top_y - 6), Vector2(6, top_y - 6), aura_col, 2.0)
-	draw_line(Vector2(6, top_y - 6), Vector2(14, top_y), aura_col, 2.0)
+	draw_line(Vector2(6, top_y - 6), Vector2(16, top_y), aura_col, 2.0)
 	draw_circle(Vector2(0, top_y - 6), 2.5, Color.WHITE)
+	
+	# Mini health bar
+	var bar_w = 42.0
+	var bar_h = 4.0
+	var bar_y = top_y - 12.0
+	var hp_frac = clampf(current_health / max(1.0, max_health), 0.0, 1.0)
+	draw_rect(Rect2(-bar_w * 0.5 - 1.0, bar_y - 1.0, bar_w + 2.0, bar_h + 2.0), Color(0.05, 0.05, 0.1, 0.85), true)
+	draw_rect(Rect2(-bar_w * 0.5, bar_y, bar_w * hp_frac, bar_h), aura_col, true)
+	draw_rect(Rect2(-bar_w * 0.5 - 1.0, bar_y - 1.0, bar_w + 2.0, bar_h + 2.0), Color(1, 1, 1, 0.4), false, 1.0)
 
 func apply_stun(duration: float) -> void:
 	stun_timer = max(stun_timer, duration)

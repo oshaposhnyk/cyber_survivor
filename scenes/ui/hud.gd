@@ -67,7 +67,9 @@ func _process(_delta: float) -> void:
 		
 	if GameManager.overdrive_timer > 0.0:
 		overdrive_chip.visible = true
-		overdrive_label.text = "⚡ ОВЕРДРАЙВ: %.1f c" % GameManager.overdrive_timer
+		var p = (sin(Time.get_ticks_msec() * 0.012) + 1.0) * 0.5
+		overdrive_label.text = "⚡ ОВЕРДРАЙВ СИСТЕМ: %.1f c ⚡" % GameManager.overdrive_timer
+		overdrive_chip.modulate = Color(1.0, 1.0, 0.4 + p * 0.6)
 	else:
 		overdrive_chip.visible = false
 		
@@ -210,12 +212,13 @@ func _on_dash_updated(current_cd: float, max_cd: float) -> void:
 		return
 	if current_cd <= 0.0:
 		dash_bar.value = 1.0
-		dash_label.text = "[ПРОБІЛ] РИВОК: ГОТОВИЙ"
-		dash_label.add_theme_color_override("font_color", Color(0.2, 0.9, 1.0))
+		var pulse = (sin(Time.get_ticks_msec() * 0.008) + 1.0) * 0.5
+		dash_label.text = ">>> [ПРОБІЛ] РИВОК: ГОТОВИЙ <<<"
+		dash_label.add_theme_color_override("font_color", Color(0.2 + pulse * 0.4, 0.9 + pulse * 0.1, 1.0))
 	else:
 		dash_bar.value = clampf(1.0 - (current_cd / max(0.01, max_cd)), 0.0, 1.0)
-		dash_label.text = "[ПРОБІЛ] РИВОК: %.1fc" % current_cd
-		dash_label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
+		dash_label.text = "[ПРОБІЛ] ЗАРЯДКА: %.1fc" % current_cd
+		dash_label.add_theme_color_override("font_color", Color(0.7, 0.78, 0.88))
 
 func _build_overdrive_chip() -> void:
 	overdrive_chip = PanelContainer.new()
@@ -281,9 +284,9 @@ func _update_cache_pointer() -> void:
 	pointer_pos.y = clampf(pointer_pos.y, 80.0, 640.0)
 	cache_pointer.position = pointer_pos
 	
-	var arrow = "→"
+	var arrow = "►"
 	if abs(dir.x) > abs(dir.y):
-		arrow = "→" if dir.x > 0 else "←"
+		arrow = "►" if dir.x > 0 else "◄"
 	else:
-		arrow = "↓" if dir.y > 0 else "↑"
-	cache_label.text = "%s ПОСТАЧАННЯ: %dм" % [arrow, int(dist)]
+		arrow = "▼" if dir.y > 0 else "▲"
+	cache_label.text = "%s [ КОНТЕЙНЕР ДАНИХ: %dм ]" % [arrow, int(dist)]

@@ -30,17 +30,34 @@ func _process(delta: float) -> void:
 		rotation += delta * 2.2
 
 func _draw() -> void:
-	var pulse = 0.85 + 0.25 * sin(pulse_time)
-	var rad = 22.0 * pulse
-	# Rotating cyan & purple diamond
-	var col = Color(0.2, 0.9, 1.0, 0.8)
-	var pts = PackedVector2Array([
-		Vector2(0, -rad), Vector2(rad * 0.8, 0), Vector2(0, rad), Vector2(-rad * 0.8, 0)
+	var pulse = 0.85 + 0.25 * sin(pulse_time * 2.0)
+	var rad = 24.0 * pulse
+	
+	# 1. Swirling Gravitational Rings
+	draw_arc(Vector2.ZERO, rad + 6.0, 0, TAU, 24, Color(0.2, 0.9, 1.0, 0.5), 1.5)
+	draw_arc(Vector2.ZERO, rad * 0.6, 0, TAU, 18, Color(0.9, 0.3, 1.0, 0.6), 1.5)
+	
+	# 2. Counter-Rotating Cyber Diamond
+	var rot_d = pulse_time * 1.5
+	var d_pts = PackedVector2Array([
+		Vector2(0, -rad).rotated(rot_d),
+		Vector2(rad * 0.75, 0).rotated(rot_d),
+		Vector2(0, rad).rotated(rot_d),
+		Vector2(-rad * 0.75, 0).rotated(rot_d)
 	])
-	draw_polygon(pts, PackedColorArray([Color(0.5, 0.2, 1.0, 0.35)]))
-	draw_polyline(pts, col, 2.5)
-	draw_line(Vector2(-rad * 0.8, 0), Vector2(0, -rad), col, 2.5)
-	draw_circle(Vector2.ZERO, rad * 0.35, Color(1.0, 1.0, 1.0, 0.9))
+	draw_polygon(d_pts, PackedColorArray([Color(0.4, 0.1, 0.9, 0.35)]))
+	draw_polyline(d_pts, Color(0.2, 0.95, 1.0, 0.9), 2.2)
+	draw_line(d_pts[3], d_pts[0], Color(0.2, 0.95, 1.0, 0.9), 2.2)
+	
+	# 3. Orbiting Gravitational Influx Motes
+	for i in range(4):
+		var ma = -pulse_time * 3.0 + float(i) * (PI * 0.5)
+		var mote_r = lerpf(rad + 12.0, rad * 0.4, fmod(pulse_time * 1.2 + i * 0.25, 1.0))
+		var mp = Vector2(cos(ma), sin(ma)) * mote_r
+		draw_circle(mp, 2.2, Color(1.0, 1.0, 1.0, 0.85))
+		
+	# 4. Pure White Quantum Nucleus
+	draw_circle(Vector2.ZERO, rad * 0.32, Color(1.0, 1.0, 1.0, 0.95))
 
 func attract(player_node: Node2D) -> void:
 	target_player = player_node
@@ -62,10 +79,15 @@ func collect() -> void:
 				
 	AudioManager.play_sfx("emp_blast", 0.08, 3.0)
 	
+	# Full-screen HUD cyan flash
+	var hud = get_tree().get_first_node_in_group("hud")
+	if hud and hud.has_method("_flash_edges"):
+		hud._flash_edges(Color(0.2, 0.95, 1.0), 0.7)
+	
 	var ft_scene = preload("res://scenes/effects/floating_text.tscn")
 	var ft = ft_scene.instantiate()
 	ft.global_position = global_position + Vector2(0, -25)
 	get_parent().add_child(ft)
-	ft.setup("ГРАВІ-МАГНІТ: ВЕСЬ БРУХТ ЗІБРАНО!", Color(0.2, 0.9, 1.0), 2.0)
+	ft.setup("ГРАВІ-МАГНІТ: ВЕСЬ БРУХТ ЗІБРАНО!", Color(0.2, 0.95, 1.0), 2.0)
 	
 	queue_free()

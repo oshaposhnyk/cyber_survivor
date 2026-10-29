@@ -176,6 +176,7 @@ func _on_cyberdeck_pressed() -> void:
 func _build_cyberdeck_dialog() -> void:
 	cyberdeck_dialog = PanelContainer.new()
 	cyberdeck_dialog.theme_type_variation = &"CyberPanel"
+	cyberdeck_dialog.anchors_preset = Control.PRESET_CENTER
 	cyberdeck_dialog.position = Vector2(230, 60)
 	cyberdeck_dialog.custom_minimum_size = Vector2(820, 580)
 	cyberdeck_dialog.visible = false
@@ -215,10 +216,16 @@ func _build_cyberdeck_dialog() -> void:
 	bal_box.add_child(nanites_label)
 	vbox.add_child(bal_box)
 	
-	# Upgrades scroll container
+	# Upgrades scroll container - strictly disable horizontal scroll
 	var scroll = ScrollContainer.new()
 	scroll.custom_minimum_size = Vector2(760, 420)
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	
 	upgrades_container = VBoxContainer.new()
+	upgrades_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	upgrades_container.add_theme_constant_override("separation", 10)
 	scroll.add_child(upgrades_container)
 	vbox.add_child(scroll)
@@ -239,47 +246,64 @@ func _refresh_cyberdeck_dialog() -> void:
 		var lvl = GameManager.get_meta_upgrade_level(key)
 		var max_lvl = def["max_lvl"]
 		var cost = GameManager.get_meta_upgrade_cost(key)
-		var can_afford = GameManager.meta_nanites >= cost and lvl < max_lvl
+		var is_max = lvl >= max_lvl
+		var can_afford = GameManager.meta_nanites >= cost and not is_max
 		
 		var card = PanelContainer.new()
 		card.theme_type_variation = &"HudPlate"
+		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		
 		var hbox = HBoxContainer.new()
+		hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		hbox.add_theme_constant_override("separation", 16)
 		
 		# Icon
 		var icon_rect = TextureRect.new()
-		icon_rect.custom_minimum_size = Vector2(40, 40)
+		icon_rect.custom_minimum_size = Vector2(42, 42)
 		icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		if ResourceLoader.exists(def["icon"]):
 			icon_rect.texture = load(def["icon"])
-		icon_rect.self_modulate = Color(0.2, 0.9, 1.0)
+		icon_rect.self_modulate = Color(1.0, 0.85, 0.2) if is_max else Color(0.2, 0.9, 1.0)
 		hbox.add_child(icon_rect)
 		
 		# Info VBox
 		var info_box = VBoxContainer.new()
 		info_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		
+		# Level pips bar e.g. [■■■□□]
+		var pips = ""
+		for p in range(max_lvl):
+			pips += "■" if p < lvl else "□"
+		
 		var name_lbl = Label.new()
 		name_lbl.theme_type_variation = &"HeadingLabel"
-		name_lbl.text = "%s  [%d/%d]" % [def["name"], lvl, max_lvl]
-		if lvl >= max_lvl:
+		name_lbl.text = "%s   [%s]  %d/%d" % [def["name"], pips, lvl, max_lvl]
+		if is_max:
 			name_lbl.add_theme_color_override("font_color", Color(1.0, 0.85, 0.2))
+		else:
+			name_lbl.add_theme_color_override("font_color", Color(0.9, 0.95, 1.0))
+			
 		var desc_lbl = Label.new()
 		desc_lbl.theme_type_variation = &"DimLabel"
 		desc_lbl.text = def["desc"]
+		desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		desc_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		
 		info_box.add_child(name_lbl)
 		info_box.add_child(desc_lbl)
 		hbox.add_child(info_box)
 		
 		# Action Button
 		var buy_btn = Button.new()
-		buy_btn.custom_minimum_size = Vector2(180, 42)
-		if lvl >= max_lvl:
+		buy_btn.custom_minimum_size = Vector2(190, 44)
+		if is_max:
 			buy_btn.text = "МАКСИМУМ"
 			buy_btn.disabled = true
 		else:
-			buy_btn.text = "МОДИФІКУВАТИ (%d ⬡)" % cost
+			buy_btn.text = "КУПИТИ (%d ⬡)" % cost
 			buy_btn.disabled = not can_afford
+			buy_btn.mouse_entered.connect(func(): AudioManager.play_sfx("ui_hover", 0.05, -8.0))
 			buy_btn.pressed.connect(func():
 				if GameManager.buy_meta_upgrade(key):
 					_refresh_cyberdeck_dialog()
