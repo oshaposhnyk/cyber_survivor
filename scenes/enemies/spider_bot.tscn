@@ -4,23 +4,23 @@
 [ext_resource type="Texture2D" path="res://assets/sprites/enemies/spider_bot.png" id="2_texture"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_spider"]
-radius = 20.0
+radius = 22.0
 
 [node name="SpiderBot" type="CharacterBody2D"]
 z_index = 6
 collision_layer = 2
-collision_mask = 3
+collision_mask = 1
 script = ExtResource("1_script")
-max_health = 45.0
-move_speed = 125.0
-contact_damage = 12.0
+max_health = 38.0
+move_speed = 135.0
+contact_damage = 10.0
 scrap_count = 2
-gold_chance = 0.1
-repair_chance = 0.04
-score_points = 25
+gold_chance = 0.08
+repair_chance = 0.03
+score_points = 20
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
-scale = Vector2(0.45, 0.45)
+scale = Vector2(0.55, 0.55)
 texture = ExtResource("2_texture")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
