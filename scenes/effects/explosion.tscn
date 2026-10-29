@@ -1,0 +1,7 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scenes/effects/explosion.gd" id="1_script"]
+
+[node name="Explosion" type="Node2D"]
+z_index = 20
+script = ExtResource("1_script")

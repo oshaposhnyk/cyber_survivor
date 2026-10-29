@@ -1,0 +1,27 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scenes/enemies/assault_droid.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://assets/sprites/enemies/assault_droid.png" id="2_texture"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_droid"]
+radius = 22.0
+
+[node name="AssaultDroid" type="CharacterBody2D"]
+z_index = 6
+collision_layer = 2
+collision_mask = 3
+script = ExtResource("1_script")
+max_health = 80.0
+move_speed = 95.0
+contact_damage = 15.0
+scrap_count = 3
+gold_chance = 0.2
+repair_chance = 0.08
+score_points = 50
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+scale = Vector2(0.65, 0.65)
+texture = ExtResource("2_texture")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_droid")
