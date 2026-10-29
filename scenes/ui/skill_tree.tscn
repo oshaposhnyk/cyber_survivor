@@ -154,9 +154,9 @@ size_flags_horizontal = 3
 layout_mode = 2
 theme_override_colors/font_color = Color(0.3, 0.85, 1, 1)
 theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 14
+theme_override_font_sizes/font_size = 13
 theme_override_styles/normal = SubResource("StyleBoxFlat_col_offense")
-text = "⚔ ОЗБРОЄННЯ"
+text = "// BUS_01: ОЗБРОЄННЯ"
 horizontal_alignment = 1
 
 [node name="Scroll" type="ScrollContainer" parent="Panel/Margin/VBox/Columns/OffenseCol"]
@@ -176,9 +176,9 @@ size_flags_horizontal = 3
 layout_mode = 2
 theme_override_colors/font_color = Color(0.25, 0.95, 0.55, 1)
 theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 14
+theme_override_font_sizes/font_size = 13
 theme_override_styles/normal = SubResource("StyleBoxFlat_col_defense")
-text = "🛡 КІБЕРНЕТИКА"
+text = "// BUS_02: ЗАХИСТ"
 horizontal_alignment = 1
 
 [node name="Scroll" type="ScrollContainer" parent="Panel/Margin/VBox/Columns/DefenseCol"]
@@ -198,9 +198,9 @@ size_flags_horizontal = 3
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.65, 0.25, 1)
 theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 14
+theme_override_font_sizes/font_size = 13
 theme_override_styles/normal = SubResource("StyleBoxFlat_col_overclock")
-text = "⚡ ОВЕРКЛОКІНГ"
+text = "// BUS_03: ОВЕРКЛОК"
 horizontal_alignment = 1
 
 [node name="Scroll" type="ScrollContainer" parent="Panel/Margin/VBox/Columns/OverclockCol"]
@@ -220,9 +220,9 @@ size_flags_horizontal = 3
 layout_mode = 2
 theme_override_colors/font_color = Color(0.95, 0.45, 1, 1)
 theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 14
+theme_override_font_sizes/font_size = 13
 theme_override_styles/normal = SubResource("StyleBoxFlat_col_synergies")
-text = "✨ СИНЕРГІЇ"
+text = "// BUS_04: СИНЕРГІЇ"
 horizontal_alignment = 1
 
 [node name="Scroll" type="ScrollContainer" parent="Panel/Margin/VBox/Columns/SynergiesCol"]

@@ -189,7 +189,7 @@ func build_synergies_panel() -> void:
 		synergies_list.add_child(panel)
 
 func refresh_all() -> void:
-	points_label.text = "⚡ ДОСТУПНО ОЧОК: %d" % GameManager.available_skill_points
+	points_label.text = "[ MEM_POINTS: 0x%02X // UNALLOCATED ]" % GameManager.available_skill_points
 	
 	# Update each skill card
 	for skill_id in node_cards.keys():
@@ -200,25 +200,26 @@ func refresh_all() -> void:
 		
 		var lvl_lbl: Label = card.find_child("LevelLabel", true, false)
 		if lvl_lbl:
-			lvl_lbl.text = "[%d/%d]" % [cur_lvl, max_lvl]
+			lvl_lbl.text = "[v%d / v%d]" % [cur_lvl, max_lvl]
 			
 		var status_lbl: Label = card.find_child("StatusLabel", true, false)
 		var btn: Button = card.find_child("UpgradeBtn", true, false)
 		
 		var can_up = GameManager.can_upgrade_skill(skill_id)
 		btn.disabled = not can_up
+		btn.text = "[ ⚡ FLASH_UPGRADE_v%d ]" % (cur_lvl + 1)
 		
 		if cur_lvl >= max_lvl:
 			btn.visible = false
-			status_lbl.text = "★ МАКСИМАЛЬНИЙ РІВЕНЬ"
-			status_lbl.modulate = Color(1.0, 0.8, 0.2)
+			status_lbl.text = "[STATE: COMPILED_MAX_v%d]" % max_lvl
+			status_lbl.modulate = Color(1.0, 0.85, 0.25)
 		elif skill["prereq"] != "" and GameManager.get_skill_level(skill["prereq"]) < skill["prereq_lvl"]:
 			var req_name = SkillData.SKILLS[skill["prereq"]]["name"]
-			status_lbl.text = "🔒 Потрібно: %s Рів. %d" % [req_name, skill["prereq_lvl"]]
+			status_lbl.text = "[LOCKED::MISSING_DEP: %s_v%d]" % [req_name, skill["prereq_lvl"]]
 			status_lbl.modulate = Color(1.0, 0.35, 0.35)
 		else:
-			status_lbl.text = "Готово до модернізації"
-			status_lbl.modulate = Color(0.3, 0.8, 1.0)
+			status_lbl.text = "[STATE: READY_TO_FLASH // 1_PT_REQ]"
+			status_lbl.modulate = Color(0.25, 0.9, 1.0)
 			
 	# Update Synergies panel
 	for syn_id in SkillData.SYNERGIES.keys():
@@ -226,14 +227,14 @@ func refresh_all() -> void:
 		var req_lbl: Label = synergies_list.find_child("ReqLabel_" + syn_id, true, false)
 		if req_lbl:
 			if GameManager.is_synergy_active(syn_id):
-				req_lbl.text = "✅ АКТИВОВАНО!"
-				req_lbl.modulate = Color(0.2, 1.0, 0.4)
+				req_lbl.text = "[STATUS: ONLINE // KERNEL_COMPILED]"
+				req_lbl.modulate = Color(0.2, 1.0, 0.45)
 			else:
 				var parts: Array[String] = []
 				for rk in syn["req"].keys():
 					var rname = SkillData.SKILLS[rk]["name"]
 					var rlvl = syn["req"][rk]
 					var clvl = GameManager.get_skill_level(rk)
-					parts.append("%s [%d/%d]" % [rname, clvl, rlvl])
-				req_lbl.text = "Вимоги: " + ", ".join(parts)
-				req_lbl.modulate = Color(0.7, 0.7, 0.7)
+					parts.append("%s [v%d/v%d]" % [rname, clvl, rlvl])
+				req_lbl.text = "DEPS: " + " + ".join(parts)
+				req_lbl.modulate = Color(0.7, 0.75, 0.85)

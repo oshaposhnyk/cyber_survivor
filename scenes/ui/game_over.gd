@@ -21,29 +21,29 @@ func show_screen(stats: Dictionary) -> void:
 	var is_victory = stats.get("victory", false)
 	
 	if is_victory:
-		title_label.text = "🏆 МІСІЯ УСПІШНА! СЕКТОР ЗАЧИЩЕНО!"
+		title_label.text = ">> [ MISSION_ACCOMPLISHED // SECTOR_PURGED ] <<"
 		title_label.modulate = Color(0.2, 1.0, 0.5)
 	else:
-		title_label.text = "💀 СИСТЕМНИЙ ЗБІЙ: КОРПУС ЗНИЩЕНО"
-		title_label.modulate = Color(1.0, 0.3, 0.3)
+		title_label.text = ">> [ KERNEL_PANIC: CHASSIS_BREACHED_0xDEAD ] <<"
+		title_label.modulate = Color(1.0, 0.35, 0.35)
 		
 	var total_sec = int(stats.get("time", 0.0))
 	var mins = floori(float(total_sec) / 60.0)
 	var secs = total_sec % 60
-	time_stat.text = "%02d:%02d" % [mins, secs]
-	kills_stat.text = str(stats.get("kills", 0))
-	scrap_stat.text = str(stats.get("scrap", 0))
-	level_stat.text = str(stats.get("level", 1))
+	time_stat.text = "%02d:%02d [T_ELAPSED]" % [mins, secs]
+	kills_stat.text = "%d [HOSTILES_PURGED]" % stats.get("kills", 0)
+	scrap_stat.text = "%d [NANO_CORES]" % stats.get("scrap", 0)
+	level_stat.text = "v%02d [MAX_KERNEL_LVL]" % stats.get("level", 1)
 	
 	var syns: Array = stats.get("synergies", [])
 	if syns.size() > 0:
 		var syn_names: Array[String] = []
 		for sid in syns:
 			if SkillData.SYNERGIES.has(sid):
-				syn_names.append(SkillData.SYNERGIES[sid]["name"])
+				syn_names.append("[SYN::" + sid.to_upper() + "]")
 		synergies_stat.text = "\n".join(syn_names)
 	else:
-		synergies_stat.text = "Не активовано"
+		synergies_stat.text = "[NONE_COMPILED]"
 
 func _on_retry_pressed() -> void:
 	visible = false

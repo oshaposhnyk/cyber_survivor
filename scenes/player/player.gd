@@ -13,9 +13,25 @@ var max_shield: float = 0.0
 var shield_recharge_delay: float = 4.0
 var shield_timer: float = 0.0
 var shield_recharge_rate: float = 25.0
-
 var damage_reduction: float = 0.0
 var hp_regen_rate: float = 0.0
+
+var is_thrusting: bool = false
+var thruster_time: float = 0.0
+
+func _draw() -> void:
+	# Dual Ion Thruster Exhaust Plumes (located at engine ports Vector2(-11, 20) and Vector2(11, 20))
+	var engine_ports = [Vector2(-11, 20), Vector2(11, 20)]
+	var plume_len = randf_range(16.0, 26.0) if is_thrusting else randf_range(5.0, 8.0)
+	var plume_width = 4.5 if is_thrusting else 2.5
+	var outer_col = Color(0.15, 0.85, 1.0, 0.85 if is_thrusting else 0.4)
+	var core_col = Color(1.0, 1.0, 1.0, 0.95 if is_thrusting else 0.6)
+	
+	for port in engine_ports:
+		var end_pt = port + Vector2(0, plume_len)
+		draw_line(port, end_pt, outer_col, plume_width)
+		draw_line(port, port + Vector2(0, plume_len * 0.5), core_col, plume_width * 0.4)
+		draw_circle(port, plume_width * 0.8, outer_col)
 
 # Weapon Timers
 var blaster_timer: float = 0.0
@@ -115,7 +131,10 @@ func handle_movement(delta: float) -> void:
 	velocity = input_vec * move_speed
 	move_and_slide()
 	
-	if input_vec.length() > 0.05:
+	is_thrusting = input_vec.length() > 0.05
+	queue_redraw()
+	
+	if is_thrusting:
 		rotation = lerp_angle(rotation, input_vec.angle() + PI / 2.0, 12.0 * delta)
 
 func handle_shield_recharge(delta: float) -> void:

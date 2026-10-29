@@ -163,28 +163,28 @@ custom_minimum_size = Vector2(0, 52)
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 16
+theme_override_font_sizes/font_size = 15
 theme_override_styles/normal = SubResource("StyleBoxFlat_btn_primary")
 theme_override_styles/hover = SubResource("StyleBoxFlat_btn_primary_hover")
-text = "▶ РОЗПОЧАТИ МІСІЮ"
+text = "[ > EXECUTE_MISSION_ARC-01 ]"
 
 [node name="InfoBtn" type="Button" parent="VBoxContainer"]
 custom_minimum_size = Vector2(0, 42)
 layout_mode = 2
 theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 13
+theme_override_font_sizes/font_size = 12
 theme_override_styles/normal = SubResource("StyleBoxFlat_btn_sec")
 theme_override_styles/hover = SubResource("StyleBoxFlat_btn_sec_hover")
-text = "ℹ КЕРУВАННЯ ТА СИСТЕМИ"
+text = "[ ? ТЕХНОЛОГІЧНА_БАЗА ]"
 
 [node name="CreditsBtn" type="Button" parent="VBoxContainer"]
 custom_minimum_size = Vector2(0, 42)
 layout_mode = 2
 theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 13
+theme_override_font_sizes/font_size = 12
 theme_override_styles/normal = SubResource("StyleBoxFlat_btn_sec")
 theme_override_styles/hover = SubResource("StyleBoxFlat_btn_sec_hover")
-text = "📜 ДЖЕРЕЛА РЕСУРСІВ (CC0)"
+text = "[ 📜 ДЖЕРЕЛА_РЕСУРСІВ_CC0 ]"
 
 [node name="FooterLabel" type="Label" parent="."]
 layout_mode = 1
