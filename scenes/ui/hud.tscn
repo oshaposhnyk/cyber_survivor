@@ -3,56 +3,98 @@
 [ext_resource type="Script" path="res://scenes/ui/hud.gd" id="1_script"]
 [ext_resource type="FontFile" path="res://assets/fonts/Kenney Future.ttf" id="2_font"]
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hud_panel"]
+bg_color = Color(0.03, 0.06, 0.12, 0.75)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.15, 0.65, 0.95, 0.7)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+shadow_color = Color(0, 0.5, 0.9, 0.2)
+shadow_size = 10
+
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hp_bg"]
-bg_color = Color(0.12, 0.12, 0.15, 0.8)
+bg_color = Color(0.08, 0.10, 0.15, 0.9)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.2, 0.4, 0.6, 0.6)
 corner_radius_top_left = 4
 corner_radius_top_right = 4
 corner_radius_bottom_right = 4
 corner_radius_bottom_left = 4
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hp_fill"]
-bg_color = Color(0.2, 0.85, 0.35, 1)
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-corner_radius_bottom_right = 4
-corner_radius_bottom_left = 4
+bg_color = Color(0.1, 0.9, 0.4, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+shadow_color = Color(0.1, 0.9, 0.4, 0.4)
+shadow_size = 6
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_shield_fill"]
-bg_color = Color(0.2, 0.75, 1, 1)
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-corner_radius_bottom_right = 4
-corner_radius_bottom_left = 4
+bg_color = Color(0.15, 0.85, 1, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+shadow_color = Color(0.15, 0.85, 1, 0.5)
+shadow_size = 6
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_xp_bg"]
-bg_color = Color(0.08, 0.08, 0.1, 0.9)
+bg_color = Color(0.04, 0.06, 0.10, 0.95)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.1, 0.5, 0.8, 0.5)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_xp_fill"]
-bg_color = Color(0.1, 0.7, 1, 1)
+bg_color = Color(0.2, 0.75, 1, 1)
+corner_radius_top_left = 2
+corner_radius_top_right = 2
+corner_radius_bottom_right = 2
+corner_radius_bottom_left = 2
+shadow_color = Color(0.2, 0.75, 1, 0.6)
+shadow_size = 5
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_banner"]
-bg_color = Color(0.08, 0.12, 0.2, 0.9)
+bg_color = Color(0.05, 0.16, 0.28, 0.9)
 border_width_left = 2
 border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
-border_color = Color(0.3, 0.7, 1, 1)
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_wave"]
-bg_color = Color(0.05, 0.08, 0.14, 0.92)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(1, 0.4, 0.2, 1)
+border_color = Color(0.2, 0.9, 1, 0.9)
 corner_radius_top_left = 8
 corner_radius_top_right = 8
 corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
+shadow_color = Color(0, 0.8, 1, 0.35)
+shadow_size = 14
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_wave"]
+bg_color = Color(0.04, 0.07, 0.14, 0.95)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(1, 0.45, 0.15, 0.95)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+shadow_color = Color(1, 0.3, 0.1, 0.4)
+shadow_size = 20
 
 [node name="HUD" type="CanvasLayer"]
 script = ExtResource("1_script")
@@ -60,33 +102,45 @@ script = ExtResource("1_script")
 [node name="MarginContainer" type="MarginContainer" parent="."]
 anchors_preset = 10
 anchor_right = 1.0
-offset_bottom = 80.0
+offset_bottom = 88.0
 grow_horizontal = 2
 theme_override_constants/margin_left = 20
-theme_override_constants/margin_top = 15
+theme_override_constants/margin_top = 12
 theme_override_constants/margin_right = 20
-theme_override_constants/margin_bottom = 5
+theme_override_constants/margin_bottom = 6
 
-[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer"]
+[node name="MainPanel" type="PanelContainer" parent="MarginContainer"]
 layout_mode = 2
-theme_override_constants/separation = 6
+theme_override_styles/panel = SubResource("StyleBoxFlat_hud_panel")
 
-[node name="TopRow" type="HBoxContainer" parent="MarginContainer/VBoxContainer"]
+[node name="PanelMargin" type="MarginContainer" parent="MarginContainer/MainPanel"]
 layout_mode = 2
-theme_override_constants/separation = 25
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 10
 
-[node name="LevelLabel" type="Label" parent="MarginContainer/VBoxContainer/TopRow"]
+[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer/MainPanel/PanelMargin"]
 layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="TopRow" type="HBoxContainer" parent="MarginContainer/MainPanel/PanelMargin/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 24
+
+[node name="LevelLabel" type="Label" parent="MarginContainer/MainPanel/PanelMargin/VBoxContainer/TopRow"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.2, 0.9, 1, 1)
 theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 18
-text = "РІВЕНЬ 1"
+theme_override_font_sizes/font_size = 16
+text = "[ ARC-01 // LVL 1 ]"
 
-[node name="HealthContainer" type="VBoxContainer" parent="MarginContainer/VBoxContainer/TopRow"]
-custom_minimum_size = Vector2(240, 0)
+[node name="HealthContainer" type="VBoxContainer" parent="MarginContainer/MainPanel/PanelMargin/VBoxContainer/TopRow"]
+custom_minimum_size = Vector2(260, 0)
 layout_mode = 2
-theme_override_constants/separation = 2
+theme_override_constants/separation = 3
 
-[node name="HPBar" type="ProgressBar" parent="MarginContainer/VBoxContainer/TopRow/HealthContainer"]
+[node name="HPBar" type="ProgressBar" parent="MarginContainer/MainPanel/PanelMargin/VBoxContainer/TopRow/HealthContainer"]
 custom_minimum_size = Vector2(0, 16)
 layout_mode = 2
 theme_override_styles/background = SubResource("StyleBoxFlat_hp_bg")
@@ -94,7 +148,7 @@ theme_override_styles/fill = SubResource("StyleBoxFlat_hp_fill")
 value = 100.0
 show_percentage = false
 
-[node name="ShieldBar" type="ProgressBar" parent="MarginContainer/VBoxContainer/TopRow/HealthContainer"]
+[node name="ShieldBar" type="ProgressBar" parent="MarginContainer/MainPanel/PanelMargin/VBoxContainer/TopRow/HealthContainer"]
 visible = false
 custom_minimum_size = Vector2(0, 8)
 layout_mode = 2
@@ -103,37 +157,41 @@ theme_override_styles/fill = SubResource("StyleBoxFlat_shield_fill")
 value = 100.0
 show_percentage = false
 
-[node name="HPLabel" type="Label" parent="MarginContainer/VBoxContainer/TopRow/HealthContainer"]
+[node name="HPLabel" type="Label" parent="MarginContainer/MainPanel/PanelMargin/VBoxContainer/TopRow/HealthContainer"]
 layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.9, 1, 0.9)
 theme_override_fonts/font = ExtResource("2_font")
 theme_override_font_sizes/font_size = 11
-text = "HP: 100/100"
+text = "ЦІЛІСНІСТЬ КОРПУСУ: 100/100"
 
-[node name="StatsContainer" type="HBoxContainer" parent="MarginContainer/VBoxContainer/TopRow"]
+[node name="StatsContainer" type="HBoxContainer" parent="MarginContainer/MainPanel/PanelMargin/VBoxContainer/TopRow"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 30
+theme_override_constants/separation = 28
 alignment = 2
 
-[node name="TimerLabel" type="Label" parent="MarginContainer/VBoxContainer/TopRow/StatsContainer"]
+[node name="TimerLabel" type="Label" parent="MarginContainer/MainPanel/PanelMargin/VBoxContainer/TopRow/StatsContainer"]
 layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.9, 0.4, 1)
 theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 18
-text = "⏱️ 00:00"
+theme_override_font_sizes/font_size = 17
+text = "⏱ 00:00"
 
-[node name="KillsLabel" type="Label" parent="MarginContainer/VBoxContainer/TopRow/StatsContainer"]
+[node name="KillsLabel" type="Label" parent="MarginContainer/MainPanel/PanelMargin/VBoxContainer/TopRow/StatsContainer"]
 layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.35, 0.35, 1)
 theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 16
+theme_override_font_sizes/font_size = 15
 text = "💀 0"
 
-[node name="ScrapLabel" type="Label" parent="MarginContainer/VBoxContainer/TopRow/StatsContainer"]
+[node name="ScrapLabel" type="Label" parent="MarginContainer/MainPanel/PanelMargin/VBoxContainer/TopRow/StatsContainer"]
 layout_mode = 2
+theme_override_colors/font_color = Color(0.3, 0.85, 1, 1)
 theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 16
-text = "⚙️ 0"
+theme_override_font_sizes/font_size = 15
+text = "⚙ 0"
 
-[node name="XPBar" type="ProgressBar" parent="MarginContainer/VBoxContainer"]
+[node name="XPBar" type="ProgressBar" parent="MarginContainer/MainPanel/PanelMargin/VBoxContainer"]
 custom_minimum_size = Vector2(0, 8)
 layout_mode = 2
 theme_override_styles/background = SubResource("StyleBoxFlat_xp_bg")
@@ -145,11 +203,12 @@ show_percentage = false
 anchors_preset = 5
 anchor_left = 0.5
 anchor_right = 0.5
-offset_left = -220.0
-offset_top = 90.0
-offset_right = 220.0
-offset_bottom = 126.0
+offset_left = -250.0
+offset_top = 100.0
+offset_right = 250.0
+offset_bottom = 142.0
 grow_horizontal = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_fonts/font = ExtResource("2_font")
 theme_override_font_sizes/font_size = 13
 theme_override_styles/normal = SubResource("StyleBoxFlat_banner")
@@ -159,12 +218,12 @@ text = "⚡ ДОСТУПНІ ОЧКИ МОДЕРНІЗАЦІЇ [ТАВ]"
 anchors_preset = 2
 anchor_top = 1.0
 anchor_bottom = 1.0
-offset_left = 20.0
-offset_top = -45.0
-offset_right = 800.0
-offset_bottom = -15.0
+offset_left = 24.0
+offset_top = -48.0
+offset_right = 850.0
+offset_bottom = -16.0
 grow_vertical = 0
-theme_override_constants/separation = 15
+theme_override_constants/separation = 16
 
 [node name="WaveBanner" type="PanelContainer" parent="."]
 anchors_preset = 8
@@ -172,10 +231,10 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -280.0
+offset_left = -320.0
 offset_top = -120.0
-offset_right = 280.0
-offset_bottom = -40.0
+offset_right = 320.0
+offset_bottom = -30.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_wave")
@@ -187,14 +246,15 @@ alignment = 1
 
 [node name="WaveTitle" type="Label" parent="WaveBanner/VBox"]
 layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.4, 0.2, 1)
+theme_override_colors/font_color = Color(1, 0.45, 0.15, 1)
 theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 18
+theme_override_font_sizes/font_size = 20
 text = "СЕКТОР 1"
 horizontal_alignment = 1
 
 [node name="WaveDesc" type="Label" parent="WaveBanner/VBox"]
 layout_mode = 2
+theme_override_colors/font_color = Color(0.9, 0.9, 0.95, 1)
 theme_override_font_sizes/font_size = 13
 text = "Опис сектору..."
 horizontal_alignment = 1

@@ -9,7 +9,9 @@ extends Control
 @onready var close_info_btn: Button = $InfoDialog/Margin/VBox/CloseInfoBtn
 @onready var info_text: RichTextLabel = $InfoDialog/Margin/VBox/InfoText
 
-var star_layers: Array[Node2D] = []
+var stars: Array[Dictionary] = []
+var nebulae: Array[Dictionary] = []
+var time_elapsed: float = 0.0
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -21,7 +23,71 @@ func _ready() -> void:
 	sfx_btn.pressed.connect(_on_toggle_sfx)
 	info_dialog.visible = false
 	
+	init_space_fx()
 	AudioManager.play_music()
+
+func init_space_fx() -> void:
+	# Menu Stars
+	for i in range(120):
+		stars.append({
+			"pos": Vector2(randf_range(0, 1280), randf_range(0, 720)),
+			"speed": randf_range(10.0, 40.0),
+			"size": randf_range(1.0, 2.8),
+			"alpha": randf_range(0.3, 0.9),
+			"color": Color(0.85, 0.95, 1.0) if randf() < 0.7 else Color(1.0, 0.85, 0.5)
+		})
+		
+	# Menu Nebulae
+	nebulae = [
+		{"pos": Vector2(250, 180), "radius": 320.0, "color": Color(0.08, 0.02, 0.18, 0.28)},
+		{"pos": Vector2(1000, 520), "radius": 420.0, "color": Color(0.02, 0.08, 0.22, 0.32)},
+		{"pos": Vector2(640, 360), "radius": 350.0, "color": Color(0.01, 0.12, 0.16, 0.22)}
+	]
+
+func _process(delta: float) -> void:
+	time_elapsed += delta
+	# Move stars downwards/left for drift
+	for s in stars:
+		s["pos"].y += s["speed"] * delta
+		s["pos"].x -= (s["speed"] * 0.3) * delta
+		if s["pos"].y > 720.0:
+			s["pos"].y = 0.0
+			s["pos"].x = randf_range(0, 1280)
+		if s["pos"].x < 0.0:
+			s["pos"].x = 1280.0
+	queue_redraw()
+
+func _draw() -> void:
+	# 1. Background Void
+	draw_rect(Rect2(0, 0, 1280, 720), Color(0.012, 0.016, 0.032))
+	
+	# 2. Glowing Nebulae
+	for neb in nebulae:
+		var p = neb["pos"] + Vector2(sin(time_elapsed * 0.5) * 20.0, cos(time_elapsed * 0.4) * 15.0)
+		var c: Color = neb["color"]
+		var r = neb["radius"]
+		draw_circle(p, r, Color(c.r, c.g, c.b, c.a * 0.4))
+		draw_circle(p, r * 0.6, Color(c.r, c.g, c.b, c.a * 0.7))
+		
+	# 3. Drifting Stars
+	for s in stars:
+		var pulse = 0.7 + 0.3 * sin(time_elapsed * 3.0 + s["pos"].x)
+		var c: Color = s["color"]
+		draw_circle(s["pos"], s["size"], Color(c.r, c.g, c.b, s["alpha"] * pulse))
+		
+	# 4. Sci-Fi Tech Corner Brackets
+	var cyan_accent = Color(0.1, 0.8, 1.0, 0.4)
+	draw_line(Vector2(20, 20), Vector2(80, 20), cyan_accent, 2.0)
+	draw_line(Vector2(20, 20), Vector2(20, 80), cyan_accent, 2.0)
+	
+	draw_line(Vector2(1260, 20), Vector2(1200, 20), cyan_accent, 2.0)
+	draw_line(Vector2(1260, 20), Vector2(1260, 80), cyan_accent, 2.0)
+	
+	draw_line(Vector2(20, 700), Vector2(80, 700), cyan_accent, 2.0)
+	draw_line(Vector2(20, 700), Vector2(20, 640), cyan_accent, 2.0)
+	
+	draw_line(Vector2(1260, 700), Vector2(1200, 700), cyan_accent, 2.0)
+	draw_line(Vector2(1260, 700), Vector2(1260, 640), cyan_accent, 2.0)
 
 func _on_start_pressed() -> void:
 	AudioManager.play_sfx("upgrade_select")

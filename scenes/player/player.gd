@@ -230,6 +230,8 @@ func fire_missiles(lvl: int) -> void:
 		var launch_dir = Vector2.UP.rotated(randf() * TAU)
 		var missile = missile_scene.instantiate()
 		missile.setup(global_position, launch_dir, damage, 60.0 + lvl * 10.0, is_valkyrie)
+		if i < targets.size():
+			missile.target = targets[i]
 		get_parent().add_child(missile)
 		
 	AudioManager.play_sfx("missile", 0.1)
@@ -243,8 +245,8 @@ func fire_railgun(lvl: int) -> void:
 	var rail_scene = preload("res://scenes/weapons/railgun_beam.tscn")
 	var rail = rail_scene.instantiate()
 	var dmg = 120.0 + lvl * 45.0
-	rail.setup(global_position, dir, dmg)
 	get_parent().add_child(rail)
+	rail.setup(global_position, dir, dmg)
 
 func fire_emp(lvl: int, force_apocalypse: bool = false) -> void:
 	var is_apocalypse = force_apocalypse or GameManager.is_synergy_active("emp_apocalypse")

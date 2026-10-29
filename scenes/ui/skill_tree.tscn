@@ -4,31 +4,90 @@
 [ext_resource type="FontFile" path="res://assets/fonts/Kenney Future.ttf" id="2_font"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bg"]
-bg_color = Color(0.04, 0.06, 0.09, 0.96)
+bg_color = Color(0.02, 0.04, 0.08, 0.96)
 border_width_left = 2
 border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
-border_color = Color(0.2, 0.6, 0.9, 1)
+border_color = Color(0.15, 0.75, 1, 0.85)
+shadow_color = Color(0, 0.6, 1, 0.25)
+shadow_size = 20
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_col_header"]
-bg_color = Color(0.08, 0.12, 0.18, 1)
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-corner_radius_bottom_right = 4
-corner_radius_bottom_left = 4
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn"]
-bg_color = Color(0.12, 0.25, 0.45, 1)
-border_width_left = 2
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_col_offense"]
+bg_color = Color(0.04, 0.12, 0.20, 0.9)
+border_width_left = 1
 border_width_top = 2
-border_width_right = 2
+border_width_right = 1
 border_width_bottom = 2
-border_color = Color(0.3, 0.7, 1, 1)
+border_color = Color(0.2, 0.7, 1, 0.9)
 corner_radius_top_left = 6
 corner_radius_top_right = 6
 corner_radius_bottom_right = 6
 corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_col_defense"]
+bg_color = Color(0.03, 0.14, 0.10, 0.9)
+border_width_left = 1
+border_width_top = 2
+border_width_right = 1
+border_width_bottom = 2
+border_color = Color(0.2, 0.9, 0.5, 0.9)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_col_overclock"]
+bg_color = Color(0.15, 0.08, 0.02, 0.9)
+border_width_left = 1
+border_width_top = 2
+border_width_right = 1
+border_width_bottom = 2
+border_color = Color(1, 0.6, 0.2, 0.9)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_col_synergies"]
+bg_color = Color(0.12, 0.03, 0.16, 0.9)
+border_width_left = 1
+border_width_top = 2
+border_width_right = 1
+border_width_bottom = 2
+border_color = Color(0.9, 0.35, 1, 0.9)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn"]
+bg_color = Color(0.08, 0.26, 0.45, 0.95)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.3, 0.85, 1, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+shadow_color = Color(0, 0.7, 1, 0.3)
+shadow_size = 10
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_hover"]
+bg_color = Color(0.12, 0.38, 0.65, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.6, 1, 1, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+shadow_color = Color(0, 0.9, 1, 0.5)
+shadow_size = 14
 
 [node name="SkillTree" type="CanvasLayer"]
 process_mode = 3
@@ -50,10 +109,10 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/margin_left = 25
-theme_override_constants/margin_top = 20
-theme_override_constants/margin_right = 25
-theme_override_constants/margin_bottom = 20
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 18
 
 [node name="VBox" type="VBoxContainer" parent="Panel/Margin"]
 layout_mode = 2
@@ -64,10 +123,14 @@ layout_mode = 2
 
 [node name="Title" type="Label" parent="Panel/Margin/VBox/Header"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.3, 0.8, 1, 1)
+theme_override_colors/font_color = Color(0.2, 0.9, 1, 1)
+theme_override_colors/font_shadow_color = Color(0, 0.5, 0.8, 0.5)
+theme_override_constants/shadow_offset_x = 0
+theme_override_constants/shadow_offset_y = 0
+theme_override_constants/shadow_outline_size = 8
 theme_override_fonts/font = ExtResource("2_font")
 theme_override_font_sizes/font_size = 20
-text = "ТЕХНОЛОГІЧНА МАТРИЦЯ АНДРОЇДА [ARC-01]"
+text = "◆ ТЕХНОЛОГІЧНА МАТРИЦЯ АНДРОЇДА [ARC-01] ◆"
 
 [node name="PointsLabel" type="Label" parent="Panel/Margin/VBox/Header"]
 layout_mode = 2
@@ -89,11 +152,11 @@ size_flags_horizontal = 3
 
 [node name="ColTitle" type="Label" parent="Panel/Margin/VBox/Columns/OffenseCol"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.2, 0.7, 1, 1)
+theme_override_colors/font_color = Color(0.3, 0.85, 1, 1)
 theme_override_fonts/font = ExtResource("2_font")
 theme_override_font_sizes/font_size = 14
-theme_override_styles/normal = SubResource("StyleBoxFlat_col_header")
-text = "⚔️ ОЗБРОЄННЯ"
+theme_override_styles/normal = SubResource("StyleBoxFlat_col_offense")
+text = "⚔ ОЗБРОЄННЯ"
 horizontal_alignment = 1
 
 [node name="Scroll" type="ScrollContainer" parent="Panel/Margin/VBox/Columns/OffenseCol"]
@@ -111,11 +174,11 @@ size_flags_horizontal = 3
 
 [node name="ColTitle" type="Label" parent="Panel/Margin/VBox/Columns/DefenseCol"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.2, 0.9, 0.5, 1)
+theme_override_colors/font_color = Color(0.25, 0.95, 0.55, 1)
 theme_override_fonts/font = ExtResource("2_font")
 theme_override_font_sizes/font_size = 14
-theme_override_styles/normal = SubResource("StyleBoxFlat_col_header")
-text = "🛡️ КІБЕРНЕТИКА"
+theme_override_styles/normal = SubResource("StyleBoxFlat_col_defense")
+text = "🛡 КІБЕРНЕТИКА"
 horizontal_alignment = 1
 
 [node name="Scroll" type="ScrollContainer" parent="Panel/Margin/VBox/Columns/DefenseCol"]
@@ -133,10 +196,10 @@ size_flags_horizontal = 3
 
 [node name="ColTitle" type="Label" parent="Panel/Margin/VBox/Columns/OverclockCol"]
 layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.6, 0.2, 1)
+theme_override_colors/font_color = Color(1, 0.65, 0.25, 1)
 theme_override_fonts/font = ExtResource("2_font")
 theme_override_font_sizes/font_size = 14
-theme_override_styles/normal = SubResource("StyleBoxFlat_col_header")
+theme_override_styles/normal = SubResource("StyleBoxFlat_col_overclock")
 text = "⚡ ОВЕРКЛОКІНГ"
 horizontal_alignment = 1
 
@@ -155,10 +218,10 @@ size_flags_horizontal = 3
 
 [node name="ColTitle" type="Label" parent="Panel/Margin/VBox/Columns/SynergiesCol"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.9, 0.4, 1, 1)
+theme_override_colors/font_color = Color(0.95, 0.45, 1, 1)
 theme_override_fonts/font = ExtResource("2_font")
 theme_override_font_sizes/font_size = 14
-theme_override_styles/normal = SubResource("StyleBoxFlat_col_header")
+theme_override_styles/normal = SubResource("StyleBoxFlat_col_synergies")
 text = "✨ СИНЕРГІЇ"
 horizontal_alignment = 1
 
@@ -176,9 +239,11 @@ layout_mode = 2
 alignment = 1
 
 [node name="CloseBtn" type="Button" parent="Panel/Margin/VBox/Footer"]
-custom_minimum_size = Vector2(260, 42)
+custom_minimum_size = Vector2(300, 44)
 layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
 theme_override_fonts/font = ExtResource("2_font")
 theme_override_font_sizes/font_size = 14
 theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
 text = "ПОВЕРНУТИСЯ ДО БОЮ [TAB / ESC]"

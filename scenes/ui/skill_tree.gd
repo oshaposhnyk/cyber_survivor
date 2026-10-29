@@ -60,21 +60,23 @@ func build_ui() -> void:
 func create_skill_card(skill: Dictionary) -> PanelContainer:
 	var panel = PanelContainer.new()
 	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0.1, 0.13, 0.18, 0.95)
+	style.bg_color = Color(0.04, 0.08, 0.14, 0.92)
 	style.border_color = skill["icon_color"]
 	style.set_border_width_all(2)
-	style.set_corner_radius_all(6)
+	style.set_corner_radius_all(8)
+	style.shadow_color = Color(skill["icon_color"].r, skill["icon_color"].g, skill["icon_color"].b, 0.25)
+	style.shadow_size = 6
 	panel.add_theme_stylebox_override("panel", style)
 	
 	var margin = MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 10)
-	margin.add_theme_constant_override("margin_right", 10)
-	margin.add_theme_constant_override("margin_top", 8)
-	margin.add_theme_constant_override("margin_bottom", 8)
+	margin.add_theme_constant_override("margin_left", 12)
+	margin.add_theme_constant_override("margin_right", 12)
+	margin.add_theme_constant_override("margin_top", 10)
+	margin.add_theme_constant_override("margin_bottom", 10)
 	panel.add_child(margin)
 	
 	var vbox = VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 4)
+	vbox.add_theme_constant_override("separation", 5)
 	margin.add_child(vbox)
 	
 	# Header (Name + Level)
@@ -90,6 +92,7 @@ func create_skill_card(skill: Dictionary) -> PanelContainer:
 	lvl_lbl.name = "LevelLabel"
 	lvl_lbl.text = "[0/%d]" % skill["max_lvl"]
 	lvl_lbl.add_theme_font_size_override("font_size", 12)
+	lvl_lbl.modulate = Color(1.0, 0.85, 0.3)
 	hbox_header.add_child(lvl_lbl)
 	vbox.add_child(hbox_header)
 	
@@ -98,7 +101,7 @@ func create_skill_card(skill: Dictionary) -> PanelContainer:
 	desc_lbl.text = skill["desc"]
 	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	desc_lbl.add_theme_font_size_override("font_size", 11)
-	desc_lbl.modulate = Color(0.8, 0.8, 0.85)
+	desc_lbl.modulate = Color(0.8, 0.85, 0.95)
 	vbox.add_child(desc_lbl)
 	
 	# Per level info
@@ -106,7 +109,7 @@ func create_skill_card(skill: Dictionary) -> PanelContainer:
 	info_lbl.text = "⚡ " + skill["per_level"]
 	info_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	info_lbl.add_theme_font_size_override("font_size", 10)
-	info_lbl.modulate = Color(0.4, 0.9, 0.5)
+	info_lbl.modulate = Color(0.3, 1.0, 0.6)
 	vbox.add_child(info_lbl)
 	
 	# Prereq / Status label
@@ -115,11 +118,26 @@ func create_skill_card(skill: Dictionary) -> PanelContainer:
 	status_lbl.add_theme_font_size_override("font_size", 10)
 	vbox.add_child(status_lbl)
 	
-	# Upgrade Button
+	# Upgrade Button styled with sci-fi look
 	var btn = Button.new()
 	btn.name = "UpgradeBtn"
-	btn.text = "+ МОДЕРНІЗУВАТИ"
+	btn.text = "▲ ДОСЛІДИТИ ТЕХНОЛОГІЮ"
 	btn.add_theme_font_size_override("font_size", 11)
+	
+	var btn_normal = StyleBoxFlat.new()
+	btn_normal.bg_color = Color(0.08, 0.22, 0.36, 0.9)
+	btn_normal.border_color = skill["icon_color"]
+	btn_normal.set_border_width_all(1)
+	btn_normal.set_corner_radius_all(4)
+	btn.add_theme_stylebox_override("normal", btn_normal)
+	
+	var btn_hover = StyleBoxFlat.new()
+	btn_hover.bg_color = Color(0.12, 0.35, 0.55, 0.95)
+	btn_hover.border_color = Color(1, 1, 1, 1)
+	btn_hover.set_border_width_all(2)
+	btn_hover.set_corner_radius_all(4)
+	btn.add_theme_stylebox_override("hover", btn_hover)
+	
 	btn.pressed.connect(func(): GameManager.upgrade_skill(skill["id"]))
 	vbox.add_child(btn)
 	
@@ -133,19 +151,21 @@ func build_synergies_panel() -> void:
 		var syn = SkillData.SYNERGIES[syn_id]
 		var panel = PanelContainer.new()
 		var style = StyleBoxFlat.new()
-		style.bg_color = Color(0.08, 0.1, 0.14, 0.9)
-		style.set_corner_radius_all(4)
+		style.bg_color = Color(0.05, 0.07, 0.12, 0.92)
+		style.border_color = syn["icon_color"]
+		style.set_border_width_all(1)
+		style.set_corner_radius_all(6)
 		panel.add_theme_stylebox_override("panel", style)
 		
 		var margin = MarginContainer.new()
-		margin.add_theme_constant_override("margin_left", 8)
-		margin.add_theme_constant_override("margin_right", 8)
-		margin.add_theme_constant_override("margin_top", 6)
-		margin.add_theme_constant_override("margin_bottom", 6)
+		margin.add_theme_constant_override("margin_left", 10)
+		margin.add_theme_constant_override("margin_right", 10)
+		margin.add_theme_constant_override("margin_top", 8)
+		margin.add_theme_constant_override("margin_bottom", 8)
 		panel.add_child(margin)
 		
 		var vbox = VBoxContainer.new()
-		vbox.add_theme_constant_override("separation", 3)
+		vbox.add_theme_constant_override("separation", 4)
 		margin.add_child(vbox)
 		
 		var name_lbl = Label.new()
@@ -158,7 +178,7 @@ func build_synergies_panel() -> void:
 		desc_lbl.text = syn["desc"]
 		desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		desc_lbl.add_theme_font_size_override("font_size", 10)
-		desc_lbl.modulate = Color(0.75, 0.75, 0.8)
+		desc_lbl.modulate = Color(0.8, 0.85, 0.9)
 		vbox.add_child(desc_lbl)
 		
 		var req_lbl = Label.new()

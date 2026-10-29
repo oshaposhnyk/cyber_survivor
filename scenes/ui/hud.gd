@@ -1,13 +1,13 @@
 extends CanvasLayer
 
-@onready var hp_bar: ProgressBar = $MarginContainer/VBoxContainer/TopRow/HealthContainer/HPBar
-@onready var hp_label: Label = $MarginContainer/VBoxContainer/TopRow/HealthContainer/HPLabel
-@onready var shield_bar: ProgressBar = $MarginContainer/VBoxContainer/TopRow/HealthContainer/ShieldBar
-@onready var xp_bar: ProgressBar = $MarginContainer/VBoxContainer/XPBar
-@onready var level_label: Label = $MarginContainer/VBoxContainer/TopRow/LevelLabel
-@onready var timer_label: Label = $MarginContainer/VBoxContainer/TopRow/StatsContainer/TimerLabel
-@onready var kills_label: Label = $MarginContainer/VBoxContainer/TopRow/StatsContainer/KillsLabel
-@onready var scrap_label: Label = $MarginContainer/VBoxContainer/TopRow/StatsContainer/ScrapLabel
+@onready var hp_bar: ProgressBar = $MarginContainer/MainPanel/PanelMargin/VBoxContainer/TopRow/HealthContainer/HPBar
+@onready var hp_label: Label = $MarginContainer/MainPanel/PanelMargin/VBoxContainer/TopRow/HealthContainer/HPLabel
+@onready var shield_bar: ProgressBar = $MarginContainer/MainPanel/PanelMargin/VBoxContainer/TopRow/HealthContainer/ShieldBar
+@onready var xp_bar: ProgressBar = $MarginContainer/MainPanel/PanelMargin/VBoxContainer/XPBar
+@onready var level_label: Label = $MarginContainer/MainPanel/PanelMargin/VBoxContainer/TopRow/LevelLabel
+@onready var timer_label: Label = $MarginContainer/MainPanel/PanelMargin/VBoxContainer/TopRow/StatsContainer/TimerLabel
+@onready var kills_label: Label = $MarginContainer/MainPanel/PanelMargin/VBoxContainer/TopRow/StatsContainer/KillsLabel
+@onready var scrap_label: Label = $MarginContainer/MainPanel/PanelMargin/VBoxContainer/TopRow/StatsContainer/ScrapLabel
 @onready var upgrade_banner: Button = $UpgradeBanner
 @onready var wave_banner: PanelContainer = $WaveBanner
 @onready var wave_title: Label = $WaveBanner/VBox/WaveTitle
@@ -29,7 +29,7 @@ func _ready() -> void:
 func _process(_delta: float) -> void:
 	# Update timer formatting
 	var total_sec = int(GameManager.time_survived)
-	var mins = total_sec / 60
+	var mins = floori(float(total_sec) / 60.0)
 	var secs = total_sec % 60
 	timer_label.text = "⏱️ %02d:%02d" % [mins, secs]
 	

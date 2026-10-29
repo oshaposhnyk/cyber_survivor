@@ -28,7 +28,7 @@ func show_screen(stats: Dictionary) -> void:
 		title_label.modulate = Color(1.0, 0.3, 0.3)
 		
 	var total_sec = int(stats.get("time", 0.0))
-	var mins = total_sec / 60
+	var mins = floori(float(total_sec) / 60.0)
 	var secs = total_sec % 60
 	time_stat.text = "%02d:%02d" % [mins, secs]
 	kills_stat.text = str(stats.get("kills", 0))
