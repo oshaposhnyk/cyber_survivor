@@ -110,7 +110,8 @@ func _physics_process(delta: float) -> void:
 			hack_checked = true
 			if randf() < player.hack_chance():
 				hack()
-	if home_target and not home_target.is_dead:
+	# The target may be a node (boss, reactor) freed since the shot turned
+	if is_instance_valid(home_target) and not home_target.is_dead:
 		var want: float = (home_target.global_position - global_position).angle()
 		var cur := velocity.angle()
 		var turned := cur + clampf(angle_difference(cur, want), -HOMING_TURN * delta, HOMING_TURN * delta)
