@@ -85,6 +85,10 @@ dash={
 2d_physics/layer_4="EnemyProjectiles"
 2d_physics/layer_5="Pickups"
 
+[physics]
+
+common/max_physics_steps_per_frame=2
+
 [rendering]
 
 rendering_device/driver.windows="d3d12"

@@ -12,10 +12,10 @@ const DOME_COLOR := Color(0.3, 0.75, 1.0)
 
 var ward_timer: float = 0.0
 var dome_phase: float = 0.0
-var tethered: Array[Node2D] = []
+var tethered: Array = []
 
-func _physics_process(delta: float) -> void:
-	super._physics_process(delta)
+func _tick(delta: float) -> void:
+	super._tick(delta)
 	if is_dead:
 		return
 	dome_phase += delta
@@ -27,7 +27,6 @@ func _physics_process(delta: float) -> void:
 			project_ward()
 	else:
 		tethered.clear()
-	queue_redraw()
 
 func project_ward() -> void:
 	tethered.clear()
@@ -39,24 +38,29 @@ func project_ward() -> void:
 		if tethered.size() < MAX_TETHERS:
 			tethered.append(e)
 
-func _draw() -> void:
+func has_overlay() -> bool:
+	return true
+
+func draw_overlay(c: Node2D) -> void:
+	# A champion bearer also shows its champion aura
+	super.draw_overlay(c)
 	if is_dead or stun_timer > 0.0:
 		return
 	var pulse = 0.5 + 0.5 * sin(dome_phase * 3.0)
-	draw_circle(Vector2.ZERO, WARD_RADIUS, Color(DOME_COLOR, 0.05 + 0.03 * pulse))
+	c.draw_circle(Vector2.ZERO, WARD_RADIUS, Color(DOME_COLOR, 0.05 + 0.03 * pulse))
 	# Rotating segmented rim
 	var segs = 12
 	for i in range(segs):
 		var a0 = TAU * i / segs + dome_phase * 0.6
-		draw_arc(Vector2.ZERO, WARD_RADIUS, a0, a0 + TAU / segs * 0.6, 6, Color(DOME_COLOR, 0.45 + 0.2 * pulse), 2.0)
+		c.draw_arc(Vector2.ZERO, WARD_RADIUS, a0, a0 + TAU / segs * 0.6, 6, Color(DOME_COLOR, 0.45 + 0.2 * pulse), 2.0)
 	# Energy tethers to shielded allies
 	for e in tethered:
 		if is_instance_valid(e) and not e.is_dead:
-			draw_line(Vector2.ZERO, to_local(e.global_position), Color(DOME_COLOR, 0.25 + 0.15 * pulse), 1.5)
+			c.draw_line(Vector2.ZERO, e.global_position - global_position, Color(DOME_COLOR, 0.25 + 0.15 * pulse), 1.5)
 
 func die() -> void:
 	if is_dead:
 		return
 	# Dome collapse flash, then normal death and loot
-	EnemyBase.spawn_explosion(get_parent(), global_position, WARD_RADIUS * 0.45, DOME_COLOR, true)
+	EnemyBase.spawn_explosion(world, global_position, WARD_RADIUS * 0.45, DOME_COLOR, true)
 	super.die()

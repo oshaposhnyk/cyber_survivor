@@ -21,6 +21,8 @@ extends CanvasLayer
 var banner_tween: Tween = null
 var flash_tween: Tween = null
 var last_hp: float = -1.0
+# stats_updated fires every frame and on every kill; labels refresh once per frame
+var stats_dirty: bool = true
 var doctrine_chip: PanelContainer
 var doctrine_label: Label
 
@@ -38,7 +40,7 @@ var cache_label: Label
 func _ready() -> void:
 	add_to_group("hud")
 	GameManager.player_damaged.connect(_on_player_health_changed)
-	GameManager.stats_updated.connect(_on_stats_updated)
+	GameManager.stats_updated.connect(func(): stats_dirty = true)
 	GameManager.level_up_occurred.connect(_on_level_up)
 	GameManager.synergy_unlocked.connect(_on_synergy_unlocked)
 	GameManager.doctrine_changed.connect(_on_doctrine_changed)
@@ -55,6 +57,10 @@ func _ready() -> void:
 	_on_stats_updated()
 
 func _process(_delta: float) -> void:
+	if stats_dirty:
+		stats_dirty = false
+		_on_stats_updated()
+
 	var total_sec = int(GameManager.time_survived)
 	timer_label.text = "%02d:%02d" % [floori(float(total_sec) / 60.0), total_sec % 60]
 
@@ -194,7 +200,8 @@ func _build_dash_display() -> void:
 	dash_label.theme_type_variation = &"MonoLabel"
 	dash_label.add_theme_font_size_override("font_size", 14)
 	dash_label.text = "[ПРОБІЛ] РИВОК: ГОТОВИЙ"
-	dash_label.add_theme_color_override("font_color", Color(0.2, 0.9, 1.0))
+	dash_label.add_theme_color_override("font_color", Color.WHITE)
+	dash_label.self_modulate = Color(0.2, 0.9, 1.0)
 	
 	dash_bar = ProgressBar.new()
 	dash_bar.custom_minimum_size = Vector2(90, 10)
@@ -210,15 +217,17 @@ func _build_dash_display() -> void:
 func _on_dash_updated(current_cd: float, max_cd: float) -> void:
 	if not is_instance_valid(dash_bar):
 		return
+	# Called every frame: colour goes through self_modulate, because a theme
+	# override change re-themes the Label each time
 	if current_cd <= 0.0:
 		dash_bar.value = 1.0
 		var pulse = (sin(Time.get_ticks_msec() * 0.008) + 1.0) * 0.5
 		dash_label.text = ">>> [ПРОБІЛ] РИВОК: ГОТОВИЙ <<<"
-		dash_label.add_theme_color_override("font_color", Color(0.2 + pulse * 0.4, 0.9 + pulse * 0.1, 1.0))
+		dash_label.self_modulate = Color(0.2 + pulse * 0.4, 0.9 + pulse * 0.1, 1.0)
 	else:
 		dash_bar.value = clampf(1.0 - (current_cd / max(0.01, max_cd)), 0.0, 1.0)
 		dash_label.text = "[ПРОБІЛ] ЗАРЯДКА: %.1fc" % current_cd
-		dash_label.add_theme_color_override("font_color", Color(0.7, 0.78, 0.88))
+		dash_label.self_modulate = Color(0.7, 0.78, 0.88)
 
 func _build_overdrive_chip() -> void:
 	overdrive_chip = PanelContainer.new()

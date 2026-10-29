@@ -202,7 +202,7 @@ func _build_cyberdeck_dialog() -> void:
 	header.add_child(spacer)
 	
 	var close_btn = Button.new()
-	close_btn.text = "✖ ЗАКРИТИ"
+	close_btn.text = "× ЗАКРИТИ"
 	close_btn.pressed.connect(func(): cyberdeck_dialog.visible = false)
 	header.add_child(close_btn)
 	vbox.add_child(header)
@@ -237,7 +237,7 @@ func _build_cyberdeck_dialog() -> void:
 func _refresh_cyberdeck_dialog() -> void:
 	if not is_instance_valid(upgrades_container):
 		return
-	nanites_label.text = "БАЛАНС НАНІТІВ: %d ⬡  (зберігаються між усіма забігами)" % GameManager.meta_nanites
+	nanites_label.text = "БАЛАНС НАНІТІВ: %d  (зберігаються між усіма забігами)" % GameManager.meta_nanites
 	for c in upgrades_container.get_children():
 		c.queue_free()
 		
@@ -301,7 +301,7 @@ func _refresh_cyberdeck_dialog() -> void:
 			buy_btn.text = "МАКСИМУМ"
 			buy_btn.disabled = true
 		else:
-			buy_btn.text = "КУПИТИ (%d ⬡)" % cost
+			buy_btn.text = "КУПИТИ: %d НАНІТІВ" % cost
 			buy_btn.disabled = not can_afford
 			buy_btn.mouse_entered.connect(func(): AudioManager.play_sfx("ui_hover", 0.05, -8.0))
 			buy_btn.pressed.connect(func():

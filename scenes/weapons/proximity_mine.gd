@@ -49,6 +49,7 @@ func _physics_process(delta: float) -> void:
 	queue_redraw()
 
 func detonate() -> void:
+	EnemyShots.clear_radius(global_position, blast_radius, EMP_COLOR if stun > 0.0 else ACCENT)
 	for e in EnemyRegistry.in_radius(global_position, blast_radius):
 		e.take_damage(damage, (e.global_position - global_position).normalized())
 		if stun > 0.0 and e.has_method("apply_stun"):

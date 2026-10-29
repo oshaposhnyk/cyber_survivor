@@ -26,7 +26,7 @@ const SPAWN_DIST_MIN: float = 1050.0
 const SPAWN_DIST_MAX: float = 1200.0
 const BOSS_TIME: float = 150.0
 
-# Vampire-Survivors-style pacing: the director keeps at least `min_alive` enemies
+# Horde pacing: the director keeps at least `min_alive` enemies
 # on the field and tops up when below it. Values are interpolated between keys,
 # so pressure grows smoothly instead of in jumps.
 const PACING = [
@@ -36,7 +36,7 @@ const PACING = [
 	{"t": 120.0, "min_alive": 130,  "interval": 0.5},
 	{"t": 180.0, "min_alive": 200,  "interval": 0.42},
 	{"t": 240.0, "min_alive": 300,  "interval": 0.35},
-	# Final stretch: hordes, like the last minutes of a Vampire Survivors stage
+	# Final stretch: peak hordes before the 7:00 extraction
 	{"t": 300.0, "min_alive": 450,  "interval": 0.28},
 	{"t": 360.0, "min_alive": 700,  "interval": 0.2},
 	{"t": 400.0, "min_alive": 950,  "interval": 0.15},
@@ -86,14 +86,6 @@ const WAVES = [
 	}
 ]
 
-var enemy_scenes = {
-	"drone": preload("res://scenes/enemies/drone.tscn"),
-	"spider": preload("res://scenes/enemies/spider_bot.tscn"),
-	"assault": preload("res://scenes/enemies/assault_droid.tscn"),
-	"kamikaze": preload("res://scenes/enemies/kamikaze.tscn"),
-	"mech": preload("res://scenes/enemies/mech_walker.tscn"),
-	"shield": preload("res://scenes/enemies/shield_bearer.tscn")
-}
 
 func setup(p_main: Node2D) -> void:
 	main_scene = p_main
@@ -157,9 +149,10 @@ func get_pacing() -> Dictionary:
 	return prev
 
 # Enemy toughness grows with time so the swarm keeps pace with the player's upgrades
+# The late part eases in over 4:00-7:00 (smoothstep): same x6.95 at 7:00, but no
+# x1.7 jump between 5:00 and 6:00 and no flat plateau after 6:20
 func get_hp_mult() -> float:
-	var late = max(0.0, elapsed - 240.0) / 60.0
-	return 1.0 + elapsed / 60.0 * 0.35 + min(late * late * 0.7, 3.5)
+	return 1.0 + elapsed / 60.0 * 0.35 + 3.5 * smoothstep(240.0, 420.0, elapsed)
 
 func get_current_wave_config() -> Dictionary:
 	var active_cfg = WAVES[0]
@@ -211,16 +204,13 @@ func spawn_enemy_wave(cfg: Dictionary, min_alive: int) -> void:
 				chosen_type = types[w_idx]
 				break
 		
-		# Spread around the whole screen edge, like Vampire Survivors
+		# Spread around the whole screen edge
 		var angle = randf() * TAU
 		spawn_at(chosen_type, player_pos + Vector2(cos(angle), sin(angle)) * randf_range(SPAWN_DIST_MIN, SPAWN_DIST_MAX))
 
-func spawn_at(type_key: String, pos: Vector2) -> void:
-	var enemy = enemy_scenes[type_key].instantiate()
-	enemy.global_position = pos
-	enemy.max_health *= get_hp_mult()
-	enemy.contact_damage *= 1.0 + elapsed / 60.0 * 0.12
-	main_scene.add_child(enemy)
+# Swarm enemies are not scenes: Swarm creates the unit from EnemyKinds
+func spawn_at(type_key: String, pos: Vector2) -> EnemyBase:
+	return Swarm.instance.spawn(type_key, pos, get_hp_mult(), 1.0 + elapsed / 60.0 * 0.12)
 
 func trigger_ambush_ring() -> void:
 	if not is_instance_valid(GameManager.player_node):
@@ -234,7 +224,7 @@ func trigger_ambush_ring() -> void:
 		spawn_at(enemy_type, player_pos + Vector2(cos(ang), sin(ang)) * randf_range(SPAWN_DIST_MIN, SPAWN_DIST_MAX))
 
 func spawn_specific_enemy(type_key: String, count: int = 1) -> void:
-	if not enemy_scenes.has(type_key) or not is_instance_valid(GameManager.player_node):
+	if not EnemyKinds.KINDS.has(type_key) or not is_instance_valid(GameManager.player_node):
 		return
 		
 	var player_pos = GameManager.player_node.global_position
@@ -265,13 +255,7 @@ func spawn_champion() -> void:
 	var t = candidates.pick_random()
 	var ang = randf() * TAU
 	var pos = GameManager.player_node.global_position + Vector2(cos(ang), sin(ang)) * randf_range(700.0, 950.0)
-	var enemy = enemy_scenes[t].instantiate()
-	enemy.global_position = pos
-	enemy.max_health *= get_hp_mult()
-	enemy.contact_damage *= 1.0 + elapsed / 60.0 * 0.12
-	main_scene.add_child(enemy)
-	if enemy.has_method("make_champion"):
-		enemy.make_champion()
+	Swarm.instance.make_champion(spawn_at(t, pos))
 		
 	var hud = get_tree().get_first_node_in_group("hud")
 	if hud and hud.has_method("show_announcement"):

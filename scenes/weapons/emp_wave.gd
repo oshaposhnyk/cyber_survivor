@@ -50,6 +50,8 @@ func _physics_process(delta: float) -> void:
 	# Detect enemies inside current wave radius
 	# Set lookup by instance id: the old Array 'in' check was O(N) per enemy per frame
 	var r2 = current_radius * current_radius
+	# Bullet clear: the wave front burns every hostile shot it passes
+	EnemyShots.clear_radius(global_position, current_radius, SYN_MAGENTA if is_apocalypse else EMP_VIOLET)
 	for enemy in EnemyRegistry.list:
 		if enemy.is_dead or hit_ids.has(enemy.get_instance_id()):
 			continue

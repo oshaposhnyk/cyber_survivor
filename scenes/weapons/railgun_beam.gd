@@ -53,32 +53,19 @@ func fire_beam() -> void:
 		return
 	beam_fired = true
 
-	var world = get_world_2d()
-	if not world:
-		return
-	var space_state = world.direct_space_state
-	if not space_state:
-		return
+	# Swarm units have no physics bodies: test the beam segment against the registry.
+	# Same 128-target limit as the old shape query.
+	var hit_list := EnemyRegistry.on_segment(global_position, global_position + direction * beam_length, 2.0)
+	if hit_list.size() > 128:
+		hit_list.resize(128)
+	for collider in hit_list:
+		if hit_marks.size() < MAX_HIT_MARKS:
+			hit_marks.append(collider.global_position - global_position)
+		if collider.has_method("take_damage"):
+			collider.take_damage(damage, direction)
 
-	# Raycast Query
-	var query = PhysicsShapeQueryParameters2D.new()
-	var shape = SegmentShape2D.new()
-	shape.a = Vector2.ZERO
-	shape.b = direction * beam_length
-	query.shape = shape
-	query.collision_mask = 2 # Enemies
-	query.transform = Transform2D(0.0, global_position)
-
-	var results = space_state.intersect_shape(query, 128)
-	var hit_list: Array[Node2D] = []
-	for res in results:
-		var collider = res.collider
-		if collider and collider.is_in_group("enemies") and collider not in hit_list:
-			hit_list.append(collider)
-			if hit_marks.size() < MAX_HIT_MARKS:
-				hit_marks.append(collider.global_position - global_position)
-			if collider.has_method("take_damage"):
-				collider.take_damage(damage, direction)
+	# Clears a safe corridor: the beam also burns hostile shots on its line
+	EnemyShots.clear_segment(global_position, global_position + direction * beam_length, 12.0, Color(0.2, 1.0, 0.75))
 
 	AudioManager.play_sfx("railgun", 0.1)
 

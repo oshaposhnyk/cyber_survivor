@@ -9,9 +9,9 @@ extends Area2D
 @export var is_valkyrie: bool = false
 
 var current_direction: Vector2 = Vector2.UP
-var target: Node2D = null
+var target: Object = null
 var hits: int = 0
-var hit_enemies: Array[Node2D] = []
+var hit_enemies: Array = []
 
 # --- Visual-only state ---
 const SMOKE_TEX := preload("res://assets/sprites/fx/smoke_puff.png")
@@ -46,9 +46,14 @@ func setup(p_position: Vector2, p_direction: Vector2, p_damage: float, p_aoe: fl
 
 var retarget_timer: float = 0.0
 
+# Hit circle of the missile; enemies are found through EnemyRegistry, not physics
+const HIT_RADIUS := 7.0
+
 func _ready() -> void:
-	collision_layer = 4
-	collision_mask = 2
+	collision_layer = 0
+	collision_mask = 0
+	monitoring = false
+	monitorable = false
 	find_closest_target()
 	if spawn_pos == Vector2.ZERO:
 		spawn_pos = global_position
@@ -74,6 +79,11 @@ func _physics_process(delta: float) -> void:
 
 	rotation = current_direction.angle() + PI / 2.0
 	global_position += current_direction * speed * delta
+	var hit = EnemyRegistry.first_hit(global_position, HIT_RADIUS, hit_enemies)
+	if hit:
+		_on_hit(hit)
+		if is_queued_for_deletion():
+			return
 
 	# Trail puff at the tail
 	age += delta
@@ -122,8 +132,8 @@ func _draw() -> void:
 		var tip := Vector2(0, -16)
 		draw_polyline(PackedVector2Array([tip + Vector2(-7, 7), tip, tip + Vector2(7, 7)]), Color(VALK_MAGENTA, 0.95), 2.5)
 
-func _on_body_entered(body: Node2D) -> void:
-	if not body.is_in_group("enemies") or body in hit_enemies:
+func _on_hit(body: Object) -> void:
+	if body in hit_enemies:
 		return
 	hit_enemies.append(body)
 	hits += 1

@@ -8,10 +8,10 @@ extends CharacterBody2D
 @export var contact_damage: float = 45.0
 
 const LASER = preload("res://scenes/weapons/enemy_laser.tscn")
-const MINIONS = [
-	preload("res://scenes/enemies/drone.tscn"),
-	preload("res://scenes/enemies/kamikaze.tscn"),
-]
+const MINIONS = ["drone", "kamikaze"]
+# Hit circle for registry-based projectile hits (matches the CollisionShape2D)
+const HIT_RADIUS := 120.0
+var hit_radius: float = HIT_RADIUS
 
 var current_health: float = 12000.0
 var knockback: Vector2 = Vector2.ZERO
@@ -171,10 +171,8 @@ func summon_minions(count: int) -> void:
 	if EnemyRegistry.count() > 1000:
 		return
 	for i in range(count):
-		var e = MINIONS[i % MINIONS.size()].instantiate()
 		var ang = randf() * TAU
-		e.global_position = global_position + Vector2(cos(ang), sin(ang)) * randf_range(90.0, 160.0)
-		get_parent().add_child(e)
+		Swarm.instance.spawn(MINIONS[i % MINIONS.size()], global_position + Vector2(cos(ang), sin(ang)) * randf_range(90.0, 160.0))
 
 # Hacking effects: the boss ignores slows; virus and fields deal plain damage
 var infected_time: float = 0.0
@@ -253,17 +251,11 @@ func die() -> void:
 	get_parent().call_deferred("add_child", core)
 	
 	# Drop rich surrounding loot
-	var scrap_scene = preload("res://scenes/pickups/nanite_scrap.tscn")
+	# Through EnemyBase so the shared pickup cap and counter stay accurate
 	for i in range(8):
-		var gold = scrap_scene.instantiate()
-		gold.global_position = global_position + Vector2(randf_range(-45, 45), randf_range(-45, 45))
-		gold.setup(1) # Gold
-		get_parent().call_deferred("add_child", gold)
+		EnemyBase.spawn_pickup(get_parent(), global_position + Vector2(randf_range(-45, 45), randf_range(-45, 45)), 1) # Gold
 		
 	for i in range(2):
-		var rep = scrap_scene.instantiate()
-		rep.global_position = global_position + Vector2(randf_range(-35, 35), randf_range(-35, 35))
-		rep.setup(2) # Repair core
-		get_parent().call_deferred("add_child", rep)
+		EnemyBase.spawn_pickup(get_parent(), global_position + Vector2(randf_range(-35, 35), randf_range(-35, 35)), 2) # Repair core
 		
 	queue_free()

@@ -29,9 +29,15 @@ func setup(p_player: Node2D, p_initial_angle: float, p_bastion: bool = false) ->
 		contact_damage *= 1.6
 		orbit_radius *= 1.25
 
+# Contact circle; damage lands once when an enemy starts touching (was body_entered)
+const HIT_RADIUS := 14.0
+var touching: Dictionary = {}
+
 func _ready() -> void:
-	collision_layer = 4
-	collision_mask = 2
+	collision_layer = 0
+	collision_mask = 0
+	monitoring = false
+	monitorable = false
 
 func _physics_process(delta: float) -> void:
 	if not is_instance_valid(player):
@@ -45,6 +51,7 @@ func _physics_process(delta: float) -> void:
 	var target_pos = player.global_position + Vector2(cos(current_angle), sin(current_angle)) * orbit_radius
 	global_position = target_pos
 	rotation = current_angle + PI / 2.0
+	_check_contacts()
 	
 	shoot_timer -= delta
 	if shoot_timer <= 0:
@@ -94,18 +101,25 @@ func _draw_bastion_ring() -> void:
 
 func shoot_at_nearest_enemy() -> void:
 	var found = EnemyRegistry.nearest(global_position, 1, 380.0)
-	var closest_enemy: Node2D = found[0] if found.size() > 0 else null
+	var closest_enemy: Object = found[0] if found.size() > 0 else null
 
 	if closest_enemy:
 		var dir = (closest_enemy.global_position - global_position).normalized()
 		var bolt_scene = preload("res://scenes/weapons/blaster_bolt.tscn")
 		var bolt = bolt_scene.instantiate()
-		bolt.setup(global_position, dir, 22.0 * damage_mult, 1, false)
+		bolt.setup(global_position, dir, 22.0 * damage_mult * GameManager.damage_scale(), 1, GameManager.get_skill_level("conductor") > 0)
 		get_parent().add_child(bolt)
 		shot_flash = 1.0
 		# Silent drone fire to prevent audio clutter
 
-func _on_body_entered(body: Node2D) -> void:
-	if body.is_in_group("enemies") and body.has_method("take_damage"):
-		var push = (body.global_position - global_position).normalized()
-		body.take_damage(contact_damage * damage_mult, push)
+func _check_contacts() -> void:
+	# Point defence: hostile shots that reach a drone burst on it
+	EnemyShots.clear_radius(global_position, HIT_RADIUS + 4.0, CyberPalette.GREEN if is_bastion else CyberPalette.CYAN)
+	var now := {}
+	for body in EnemyRegistry.overlapping(global_position, HIT_RADIUS):
+		var id := body.get_instance_id()
+		now[id] = true
+		if not touching.has(id):
+			var push = (body.global_position - global_position).normalized()
+			body.take_damage(contact_damage * damage_mult * GameManager.damage_scale(), push)
+	touching = now

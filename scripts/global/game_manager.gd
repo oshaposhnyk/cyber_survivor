@@ -249,6 +249,19 @@ func add_scrap(amount: int = 1) -> void:
 	
 	stats_updated.emit()
 
+# Shared power curve for all player damage: x1.0 at 0:00, x3.8 at 7:00.
+# Enemy HP grows with time (wave_manager.get_hp_mult), so every weapon must too.
+# Before, only DoT scaled, and direct-damage builds fell off late.
+func damage_scale() -> float:
+	return 1.0 + time_survived / 150.0
+
+# Chain lightning targets per hit: Conductor +2 per level, Plasma Storm +1
+func chain_targets() -> int:
+	var n := 2 * get_skill_level("conductor")
+	if is_synergy_active("plasma_storm"):
+		n += 1
+	return maxi(n, 2)
+
 func get_skill_level(skill_id: String) -> int:
 	return skill_levels.get(skill_id, 0)
 

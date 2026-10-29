@@ -28,7 +28,8 @@ var sound_cooldowns: Dictionary = {
 	"emp_blast": 0.25,
 	"level_up": 0.3,
 	"victory": 0.4,
-	"dash": 0.18
+	"dash": 0.18,
+	"kamikaze_arm": 0.12
 }
 var last_play_times: Dictionary = {}
 
@@ -85,7 +86,9 @@ func load_sounds() -> void:
 		"ui_hover": "res://assets/audio/ui_hover.wav",
 		"victory": "res://assets/audio/victory.wav",
 		"game_over": "res://assets/audio/game_over.wav",
-		"dash": "res://assets/audio/railgun_fire.wav"
+		"dash": "res://assets/audio/railgun_fire.wav",
+		# Own key so the fuse warning is never throttled by player missiles
+		"kamikaze_arm": "res://assets/audio/shield_hit.wav"
 	}
 	for key in files.keys():
 		var paths: Array = files[key] if files[key] is Array else [files[key]]
@@ -150,6 +153,8 @@ func play_sfx(sound_name: String, pitch_rnd: float = 0.08, volume_offset_db: flo
 		base_pitch = clampf(1.0 + float(scrap_combo) * 0.035, 1.0, 1.65)
 	elif sound_name == "dash":
 		base_pitch = 1.75
+	elif sound_name == "kamikaze_arm":
+		base_pitch = 1.9
 	
 	player.volume_db = -7.0 + volume_offset_db
 	player.pitch_scale = base_pitch + randf_range(-pitch_rnd, pitch_rnd)
