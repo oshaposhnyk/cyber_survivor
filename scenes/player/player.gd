@@ -19,8 +19,29 @@ var hp_regen_rate: float = 0.0
 var is_thrusting: bool = false
 var thruster_time: float = 0.0
 
+# Weapon ports toggles
+var blaster_barrel_toggle: int = 0
+var missile_pod_toggle: int = 0
+
+# Side hull damage spark bursts
+var damage_sparks: Array[Dictionary] = []
+
+func spawn_side_damage_sparks(local_origin: Vector2, local_dir: Vector2) -> void:
+	for i in range(12):
+		var ang = local_dir.angle() + randf_range(-0.8, 0.8)
+		var spd = randf_range(80.0, 220.0)
+		damage_sparks.append({
+			"pos": local_origin,
+			"vel": Vector2(cos(ang), sin(ang)) * spd,
+			"size": randf_range(1.5, 3.2),
+			"life": randf_range(0.2, 0.45),
+			"max_life": 0.4,
+			"color": Color(1.0, randf_range(0.4, 0.9), 0.1)
+		})
+	queue_redraw()
+
 func _draw() -> void:
-	# Dual Ion Thruster Exhaust Plumes (located at engine ports Vector2(-11, 20) and Vector2(11, 20))
+	# 1. Dual Ion Thruster Exhaust Plumes
 	var engine_ports = [Vector2(-11, 20), Vector2(11, 20)]
 	var plume_len = randf_range(16.0, 26.0) if is_thrusting else randf_range(5.0, 8.0)
 	var plume_width = 4.5 if is_thrusting else 2.5
@@ -32,6 +53,14 @@ func _draw() -> void:
 		draw_line(port, end_pt, outer_col, plume_width)
 		draw_line(port, port + Vector2(0, plume_len * 0.5), core_col, plume_width * 0.4)
 		draw_circle(port, plume_width * 0.8, outer_col)
+		
+	# 2. Side Hull Breach Sparks
+	for s in damage_sparks:
+		if s["life"] > 0.0:
+			var a = clampf(s["life"] / s["max_life"], 0.0, 1.0)
+			var col: Color = s["color"]
+			draw_circle(s["pos"], s["size"], Color(col.r, col.g, col.b, a))
+			draw_line(s["pos"], s["pos"] - s["vel"] * 0.025, Color(1.0, 0.6, 0.1, a * 0.7), 1.5)
 
 # Weapon Timers
 var blaster_timer: float = 0.0
@@ -118,6 +147,18 @@ func _physics_process(delta: float) -> void:
 	handle_shield_recharge(delta)
 	handle_regen(delta)
 	handle_weapons(delta)
+	
+	# Update side damage sparks
+	if damage_sparks.size() > 0:
+		var alive_sparks: Array[Dictionary] = []
+		for s in damage_sparks:
+			s["pos"] += s["vel"] * delta
+			s["vel"] = s["vel"].move_toward(Vector2.ZERO, 300.0 * delta)
+			s["life"] -= delta
+			if s["life"] > 0.0:
+				alive_sparks.append(s)
+		damage_sparks = alive_sparks
+		queue_redraw()
 
 func handle_movement(delta: float) -> void:
 	var input_vec = Vector2.ZERO
@@ -210,7 +251,7 @@ func find_nearest_enemies(count: int = 1) -> Array[Node2D]:
 
 func fire_blaster(lvl: int) -> void:
 	var target = find_nearest_enemies(1)
-	var shoot_dir = Vector2.UP.rotated(rotation - PI/2.0)
+	var shoot_dir = Vector2.UP.rotated(rotation)
 	if target.size() > 0:
 		shoot_dir = (target[0].global_position - global_position).normalized()
 		
@@ -221,19 +262,32 @@ func fire_blaster(lvl: int) -> void:
 	var can_chain = is_storm or conductor_lvl > 0
 	
 	var count = 1
-	if is_storm:
-		count = 3
-	elif lvl >= 5:
+	if is_storm or lvl >= 5:
 		count = 3
 	elif lvl >= 3:
 		count = 2
 		
-	var spread = 0.25
+	var spread = 0.22
+	var left_wing = Vector2(-15, -8).rotated(rotation)
+	var right_wing = Vector2(15, -8).rotated(rotation)
+	var nose_emitter = Vector2(0, -22).rotated(rotation)
+	
 	for i in range(count):
+		var spawn_pt = global_position
+		if count == 1:
+			blaster_barrel_toggle += 1
+			spawn_pt += left_wing if (blaster_barrel_toggle % 2 == 0) else right_wing
+		elif count == 2:
+			spawn_pt += left_wing if (i == 0) else right_wing
+		else:
+			if i == 0: spawn_pt += left_wing
+			elif i == 1: spawn_pt += right_wing
+			else: spawn_pt += nose_emitter
+			
 		var ang_offset = (i - (count - 1) / 2.0) * spread
 		var dir = shoot_dir.rotated(ang_offset)
 		var bolt = bolt_scene.instantiate()
-		bolt.setup(global_position, dir, damage, 2 if is_storm else 1, can_chain)
+		bolt.setup(spawn_pt, dir, damage, 2 if is_storm else 1, can_chain)
 		get_parent().add_child(bolt)
 		
 	AudioManager.play_sfx("laser", 0.15)
@@ -244,11 +298,20 @@ func fire_missiles(lvl: int) -> void:
 	var missile_scene = preload("res://scenes/weapons/missile.tscn")
 	var count = lvl + 1
 	var damage = 45.0 + lvl * 15.0
+	var fwd = Vector2.UP.rotated(rotation)
 	
 	for i in range(count):
-		var launch_dir = Vector2.UP.rotated(randf() * TAU)
+		missile_pod_toggle += 1
+		var is_left = (missile_pod_toggle % 2 == 0)
+		var pod_offset = Vector2(-14, 4) if is_left else Vector2(14, 4)
+		var spawn_pt = global_position + pod_offset.rotated(rotation)
+		
+		# Emerge angled from missile bay
+		var side_angle = (-0.35 if is_left else 0.35) + randf_range(-0.15, 0.15)
+		var launch_dir = fwd.rotated(side_angle)
+		
 		var missile = missile_scene.instantiate()
-		missile.setup(global_position, launch_dir, damage, 60.0 + lvl * 10.0, is_valkyrie)
+		missile.setup(spawn_pt, launch_dir, damage, 60.0 + lvl * 10.0, is_valkyrie)
 		if i < targets.size():
 			missile.target = targets[i]
 		get_parent().add_child(missile)
@@ -257,15 +320,16 @@ func fire_missiles(lvl: int) -> void:
 
 func fire_railgun(lvl: int) -> void:
 	var target = find_nearest_enemies(1)
-	var dir = Vector2.UP.rotated(rotation - PI/2.0)
+	var dir = Vector2.UP.rotated(rotation)
 	if target.size() > 0:
 		dir = (target[0].global_position - global_position).normalized()
 		
+	var nose_emitter = global_position + Vector2(0, -24).rotated(rotation)
 	var rail_scene = preload("res://scenes/weapons/railgun_beam.tscn")
 	var rail = rail_scene.instantiate()
 	var dmg = 120.0 + lvl * 45.0
 	get_parent().add_child(rail)
-	rail.setup(global_position, dir, dmg)
+	rail.setup(nose_emitter, dir, dmg)
 
 func fire_emp(lvl: int, force_apocalypse: bool = false) -> void:
 	var is_apocalypse = force_apocalypse or GameManager.is_synergy_active("emp_apocalypse")
@@ -277,9 +341,17 @@ func fire_emp(lvl: int, force_apocalypse: bool = false) -> void:
 	emp.setup(global_position, rad, dmg, stun, is_apocalypse)
 	get_parent().add_child(emp)
 
-func take_damage(amount: float) -> void:
+func take_damage(amount: float, source_pos: Vector2 = Vector2.ZERO) -> void:
 	var actual_damage = amount * (1.0 - damage_reduction)
 	shield_timer = shield_recharge_delay
+	
+	# Spawn side hull sparks where the impact came from
+	if source_pos != Vector2.ZERO:
+		var local_dir = (to_local(source_pos)).normalized()
+		var impact_loc = local_dir * 18.0
+		spawn_side_damage_sparks(impact_loc, local_dir)
+	else:
+		spawn_side_damage_sparks(Vector2(randf_range(-15, 15), randf_range(-15, 15)), Vector2.UP.rotated(randf() * TAU))
 	
 	# Shield absorbs first
 	if current_shield > 0.0:

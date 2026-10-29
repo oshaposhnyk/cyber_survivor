@@ -1,0 +1,20 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scenes/pickups/quantum_core.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://assets/sprites/pickups/scrap_gold.png" id="2_texture"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_core"]
+radius = 24.0
+
+[node name="QuantumCore" type="Area2D" groups=["pickups"]]
+z_index = 8
+collision_layer = 16
+collision_mask = 1
+script = ExtResource("1_script")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+scale = Vector2(1.8, 1.8)
+texture = ExtResource("2_texture")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_core")

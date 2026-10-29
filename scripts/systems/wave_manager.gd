@@ -12,6 +12,7 @@ var elapsed: float = 0.0
 # Special ambush wave timer
 var ambush_timer: float = 20.0
 var mech_boss_timer: float = 40.0
+var boss_spawned: bool = false
 
 # Maximum active concurrent enemies to ensure stable 60 FPS even during massive hordes
 const MAX_CONCURRENT_ENEMIES: int = 1600
@@ -97,6 +98,11 @@ func _process(delta: float) -> void:
 	if spawn_timer <= 0.0:
 		spawn_timer = current_cfg["interval"]
 		spawn_enemy_wave(current_cfg)
+		
+	# Dreadnought Titan Boss event at 2:00 (120s)
+	if elapsed >= 120.0 and not boss_spawned:
+		boss_spawned = true
+		spawn_dreadnought_boss()
 		
 	# Periodic Ambush Circle Swarms
 	ambush_timer -= delta
@@ -201,3 +207,19 @@ func spawn_specific_enemy(type_key: String, count: int = 1) -> void:
 		var dist = randf_range(900.0, 1050.0)
 		enemy.global_position = player_pos + Vector2(cos(angle), sin(angle)) * dist
 		main_scene.add_child(enemy)
+
+func spawn_dreadnought_boss() -> void:
+	if not is_instance_valid(GameManager.player_node) or not is_instance_valid(main_scene):
+		return
+		
+	var boss_scene = preload("res://scenes/enemies/boss_titan.tscn")
+	var boss = boss_scene.instantiate()
+	var spawn_ang = randf() * TAU
+	boss.global_position = GameManager.player_node.global_position + Vector2(cos(spawn_ang), sin(spawn_ang)) * 620.0
+	main_scene.call_deferred("add_child", boss)
+	
+	AudioManager.play_sfx("emp_blast", 0.05, 3.0)
+	
+	var hud = get_tree().get_first_node_in_group("hud")
+	if hud and hud.has_method("show_announcement"):
+		hud.show_announcement("⚠️ ЧЕРВОНИЙ РІВЕНЬ ЗАГРОЗИ! ⚠️", "ВИЯВЛЕНО ОМЕГА-ДРЕДНОУТ «LEVIATHAN-01»")

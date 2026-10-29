@@ -78,7 +78,7 @@ func shoot_at_nearest_enemy() -> void:
 		var bolt = bolt_scene.instantiate()
 		bolt.setup(global_position, dir, 22.0, 1, false)
 		get_parent().add_child(bolt)
-		AudioManager.play_sfx("laser", 0.25, -5.0)
+		# Silent drone fire to prevent audio clutter
 
 func _on_body_entered(body: Node2D) -> void:
 	if body.is_in_group("enemies") and body.has_method("take_damage"):

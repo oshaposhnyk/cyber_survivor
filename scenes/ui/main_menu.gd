@@ -14,13 +14,13 @@ var nebulae: Array[Dictionary] = []
 var time_elapsed: float = 0.0
 
 const BOOT_LOGS = [
-	"0x001A [BOOT] :: SYSTEM_INITIALIZE_KERNEL_v4.7.2",
-	"0x004F [ARCH] :: WASM_COMPATIBILITY_THREADLESS_OK",
-	"0x008E [ORBIT] :: CONNECTED_TO_AETHELGARD_CORE",
-	"0x011C [ALERT] :: PROTOCOL_ZERO_CORRUPTION_DETECTED",
-	"0x017A [SWARM] :: HOSTILE_MECH_SIGNATURES: 1,500+",
-	"0x021F [PILOT] :: ARC-01_VANGUARD_INITIALIZING...",
-	"0x02FE [ROOT] :: ACCESS_GRANTED // READY_FOR_COMMAND"
+	"0x001A [BOOT] :: INITIALIZE_KERNEL_v4.7",
+	"0x004F [ARCH] :: WASM_COMPATIBILITY_OK",
+	"0x008E [ORBIT] :: CONNECTED_TO_CORE",
+	"0x011C [ALERT] :: CORRUPTION_DETECTED",
+	"0x017A [SWARM] :: SIGNATURES: 1,500+",
+	"0x021F [PILOT] :: ARC-01_INITIALIZING...",
+	"0x02FE [ROOT] :: ACCESS_GRANTED // READY"
 ]
 
 func _ready() -> void:
@@ -97,25 +97,25 @@ func _draw() -> void:
 	draw_line(Vector2(1255, 695), Vector2(1255, 630), cyan_accent, 2.0)
 	
 	# 5. Cyberpunk Code Terminal Log Box (Left Side)
-	var log_box_rect = Rect2(35, 140, 290, 260)
-	draw_rect(log_box_rect, Color(0.02, 0.04, 0.08, 0.7))
-	draw_rect(log_box_rect, Color(0.1, 0.6, 0.9, 0.35), false, 1.0)
+	var log_box_rect = Rect2(30, 135, 340, 260)
+	draw_rect(log_box_rect, Color(0.02, 0.04, 0.08, 0.75))
+	draw_rect(log_box_rect, Color(0.1, 0.65, 0.95, 0.45), false, 1.5)
 	
 	# Header for terminal log
 	var font = ThemeDB.fallback_font
 	var font_sz = 10
-	draw_string(font, Vector2(45, 160), "// SECURE_SHELL::LOGS", HORIZONTAL_ALIGNMENT_LEFT, -1, font_sz, Color(0.3, 0.9, 1.0, 0.9))
+	draw_string(font, Vector2(42, 158), "// SECURE_SHELL::LOGS", HORIZONTAL_ALIGNMENT_LEFT, -1, font_sz, Color(0.3, 0.9, 1.0, 0.9))
 	
 	var visible_lines = min(BOOT_LOGS.size(), int(time_elapsed * 2.5) + 1)
 	for i in range(visible_lines):
 		var y_pos = 185 + i * 26
-		draw_string(font, Vector2(45, y_pos), BOOT_LOGS[i], HORIZONTAL_ALIGNMENT_LEFT, -1, font_sz, Color(0.4, 0.8, 0.9, 0.75))
+		draw_string(font, Vector2(42, y_pos), BOOT_LOGS[i], HORIZONTAL_ALIGNMENT_LEFT, -1, font_sz, Color(0.4, 0.8, 0.9, 0.75))
 		
 	# Terminal cursor
 	if fmod(time_elapsed * 3.0, 2.0) < 1.0:
 		var cur_y = 185 + visible_lines * 26
 		if cur_y < 380:
-			draw_string(font, Vector2(45, cur_y), "> _", HORIZONTAL_ALIGNMENT_LEFT, -1, font_sz, Color(0.2, 1.0, 0.5))
+			draw_string(font, Vector2(42, cur_y), "> _", HORIZONTAL_ALIGNMENT_LEFT, -1, font_sz, Color(0.2, 1.0, 0.5))
 
 func _on_start_pressed() -> void:
 	AudioManager.play_sfx("upgrade_select")
@@ -151,8 +151,14 @@ func _on_credits_pressed() -> void:
 
 func _on_toggle_music() -> void:
 	var on = AudioManager.toggle_music()
-	music_btn.text = "🎵 Музика: " + ("Увімк" if on else "Вимк")
+	var icon_path = "res://assets/sprites/ui/icons/musicOn.png" if on else "res://assets/sprites/ui/icons/musicOff.png"
+	if ResourceLoader.exists(icon_path):
+		music_btn.icon = load(icon_path)
+	music_btn.modulate = Color.WHITE if on else Color(0.6, 0.6, 0.6, 0.7)
 
 func _on_toggle_sfx() -> void:
 	var on = AudioManager.toggle_sfx()
-	sfx_btn.text = "🔊 Звуки: " + ("Увімк" if on else "Вимк")
+	var icon_path = "res://assets/sprites/ui/icons/audioOn.png" if on else "res://assets/sprites/ui/icons/audioOff.png"
+	if ResourceLoader.exists(icon_path):
+		sfx_btn.icon = load(icon_path)
+	sfx_btn.modulate = Color.WHITE if on else Color(0.6, 0.6, 0.6, 0.7)

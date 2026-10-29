@@ -446,12 +446,12 @@ func _on_wire_overlay_draw() -> void:
 			var p_rect = parent_card.get_global_rect()
 			var c_rect = child_card.get_global_rect()
 			
-			var p_pt = wire_overlay.to_local(p_rect.get_center())
-			var c_pt = wire_overlay.to_local(c_rect.get_center())
+			var p_pt = p_rect.get_center() - wire_overlay.global_position
+			var c_pt = c_rect.get_center() - wire_overlay.global_position
 			
 			# Wire exits bottom of parent and enters top of child
-			var start_pt = Vector2(p_pt.x, wire_overlay.to_local(Vector2(0, p_rect.end.y)).y)
-			var end_pt = Vector2(c_pt.x, wire_overlay.to_local(Vector2(0, c_rect.position.y)).y)
+			var start_pt = Vector2(p_pt.x, p_rect.end.y - wire_overlay.global_position.y)
+			var end_pt = Vector2(c_pt.x, c_rect.position.y - wire_overlay.global_position.y)
 			
 			var is_unlocked = GameManager.get_skill_level(prereq_id) >= skill["prereq_lvl"]
 			var col = skill["icon_color"] if is_unlocked else Color(0.25, 0.35, 0.45, 0.4)

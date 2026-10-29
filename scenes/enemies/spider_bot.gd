@@ -29,5 +29,12 @@ func _physics_process(delta: float) -> void:
 	knockback = knockback.move_toward(Vector2.ZERO, 700.0 * delta)
 	move_and_slide()
 	
-	if dist < 32.0 and target_player.has_method("take_damage"):
-		target_player.take_damage(contact_damage * delta * 3.5)
+	var touching_player = (dist <= 42.0)
+	if not touching_player:
+		for i in range(get_slide_collision_count()):
+			if get_slide_collision(i).get_collider() == target_player:
+				touching_player = true
+				break
+				
+	if touching_player and target_player.has_method("take_damage"):
+		target_player.take_damage(contact_damage * delta * 2.8, global_position)

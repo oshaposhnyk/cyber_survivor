@@ -14,20 +14,20 @@ var sound_streams: Dictionary = {}
 var music_muted: bool = false
 var sfx_muted: bool = false
 
-# Cooldowns per sound type to prevent audio stutter / WebAudio clipping
+# Cooldowns per sound type to strictly prevent audio overload and clipping
 var sound_cooldowns: Dictionary = {
-	"laser": 0.045,
-	"railgun": 0.07,
-	"missile": 0.06,
-	"scrap": 0.035,
-	"explosion": 0.065,
-	"heavy_explosion": 0.09,
-	"shield_hit": 0.09,
-	"ui_hover": 0.04,
-	"upgrade_select": 0.05,
-	"emp_blast": 0.1,
-	"level_up": 0.15,
-	"victory": 0.2
+	"laser": 0.12,
+	"railgun": 0.15,
+	"missile": 0.18,
+	"scrap": 0.22,               # Max 1 scrap chime per 0.22s (prevents machine-gun audio spam)
+	"explosion": 0.28,           # Max 1 explosion per 0.28s for hordes
+	"heavy_explosion": 0.35,
+	"shield_hit": 0.16,
+	"ui_hover": 0.06,
+	"upgrade_select": 0.08,
+	"emp_blast": 0.25,
+	"level_up": 0.3,
+	"victory": 0.4
 }
 var last_play_times: Dictionary = {}
 
@@ -41,10 +41,11 @@ func _ready() -> void:
 	# Music player
 	bgm_player = AudioStreamPlayer.new()
 	bgm_player.bus = "Master"
-	bgm_player.volume_db = -11.0
+	bgm_player.volume_db = -12.0
 	add_child(bgm_player)
 	
-	# SFX Players pool (clamped to 10 to keep web browser CPU light)
+	# SFX Players pool (strictly clamped to 6 channels for clean browser audio)
+	max_sfx_channels = 6
 	for i in range(max_sfx_channels):
 		var p = AudioStreamPlayer.new()
 		p.bus = "Master"
