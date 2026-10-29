@@ -12,6 +12,9 @@ signal player_damaged(current_hp, max_hp, current_shield, max_shield)
 signal scrap_picked_up(amount)
 signal wave_changed(wave_index, wave_name)
 signal game_over_screen(stats)
+signal meta_updated()
+signal dash_updated(current_cd, max_cd)
+signal overdrive_changed(active)
 
 enum State {
 	MENU,
@@ -23,6 +26,64 @@ enum State {
 }
 
 var current_state: State = State.MENU
+
+# Persistent Save Data across runs
+const SAVE_PATH := "user://cyber_save.json"
+var meta_nanites: int = 0
+var meta_upgrades: Dictionary = {
+	"hull": 0,      # Max 5: +10 max HP each
+	"speed": 0,     # Max 5: +4% speed each
+	"magnet": 0,    # Max 5: +15% magnet radius each
+	"dash": 0,      # Max 3: -12% dash cooldown each
+	"reboot": 0     # Max 1: Emergency Reboot (revive 1 time per run at 50% HP)
+}
+
+const META_UPGRADE_DEFS = {
+	"hull": {
+		"name": "Посилений Каркас",
+		"desc": "+10 до базового HP корабля на старті кожного забігу.",
+		"max_lvl": 5,
+		"base_cost": 60,
+		"cost_mult": 1.5,
+		"icon": "res://assets/sprites/ui/gi/armor.png"
+	},
+	"speed": {
+		"name": "Іонні Прискорювачі",
+		"desc": "+4% до базової швидкості маневрування за рівень.",
+		"max_lvl": 5,
+		"base_cost": 50,
+		"cost_mult": 1.45,
+		"icon": "res://assets/sprites/ui/gi/speed.png"
+	},
+	"magnet": {
+		"name": "Граві-Захоплювач",
+		"desc": "+15% до стартового радіуса притягання нанітів за рівень.",
+		"max_lvl": 5,
+		"base_cost": 45,
+		"cost_mult": 1.4,
+		"icon": "res://assets/sprites/ui/gi/magnet.png"
+	},
+	"dash": {
+		"name": "Фазовий Оверклок",
+		"desc": "-12% часу кулдауну тактичного ривка (Dash) за рівень.",
+		"max_lvl": 3,
+		"base_cost": 90,
+		"cost_mult": 1.7,
+		"icon": "res://assets/sprites/ui/gi/cooldown.png"
+	},
+	"reboot": {
+		"name": "Аварійний Ребут",
+		"desc": "1 раз за забіг при фатальному пошкодженні реактор перезавантажується з 50% HP та випускає захисний EMP-імпульс.",
+		"max_lvl": 1,
+		"base_cost": 250,
+		"cost_mult": 1.0,
+		"icon": "res://assets/sprites/ui/gi/emp.png"
+	}
+}
+
+# Run-specific buff states
+var reboot_used: bool = false
+var overdrive_timer: float = 0.0
 
 # Run Statistics
 var time_survived: float = 0.0
@@ -50,6 +111,7 @@ var player_node: Node2D = null
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	load_save()
 	reset_run()
 
 func reset_run() -> void:
@@ -61,6 +123,8 @@ func reset_run() -> void:
 	current_xp = 0
 	xp_needed = 12
 	available_skill_points = 1
+	reboot_used = false
+	overdrive_timer = 0.0
 	
 	skill_levels.clear()
 	for skill_id in SkillData.SKILLS.keys():
@@ -72,6 +136,72 @@ func reset_run() -> void:
 	active_synergies.clear()
 	active_doctrine = -1
 	current_state = State.MENU
+
+func load_save() -> void:
+	if not FileAccess.file_exists(SAVE_PATH):
+		return
+	var file = FileAccess.open(SAVE_PATH, FileAccess.READ)
+	if not file:
+		return
+	var json_str = file.get_as_text()
+	var parsed = JSON.parse_string(json_str)
+	if parsed is Dictionary:
+		meta_nanites = int(parsed.get("meta_nanites", 0))
+		var saved_upgrades = parsed.get("meta_upgrades", {})
+		if saved_upgrades is Dictionary:
+			for k in saved_upgrades.keys():
+				if meta_upgrades.has(k):
+					meta_upgrades[k] = int(saved_upgrades[k])
+	meta_updated.emit()
+
+func save_game() -> void:
+	var file = FileAccess.open(SAVE_PATH, FileAccess.WRITE)
+	if not file:
+		return
+	var data = {
+		"meta_nanites": meta_nanites,
+		"meta_upgrades": meta_upgrades
+	}
+	file.store_string(JSON.stringify(data))
+
+func get_meta_upgrade_level(key: String) -> int:
+	return meta_upgrades.get(key, 0)
+
+func get_meta_upgrade_cost(key: String) -> int:
+	if not META_UPGRADE_DEFS.has(key):
+		return 999999
+	var def = META_UPGRADE_DEFS[key]
+	var lvl = get_meta_upgrade_level(key)
+	return int(def["base_cost"] * pow(def["cost_mult"], lvl))
+
+func can_buy_meta_upgrade(key: String) -> bool:
+	if not META_UPGRADE_DEFS.has(key):
+		return false
+	var lvl = get_meta_upgrade_level(key)
+	if lvl >= META_UPGRADE_DEFS[key]["max_lvl"]:
+		return false
+	return meta_nanites >= get_meta_upgrade_cost(key)
+
+func buy_meta_upgrade(key: String) -> bool:
+	if not can_buy_meta_upgrade(key):
+		return false
+	var cost = get_meta_upgrade_cost(key)
+	meta_nanites -= cost
+	meta_upgrades[key] += 1
+	save_game()
+	meta_updated.emit()
+	AudioManager.play_sfx("upgrade_select")
+	return true
+
+func has_reboot_available() -> bool:
+	return get_meta_upgrade_level("reboot") > 0 and not reboot_used
+
+func consume_reboot() -> void:
+	reboot_used = true
+
+func trigger_overdrive(duration: float = 10.0) -> void:
+	overdrive_timer = duration
+	overdrive_changed.emit(true)
 
 func start_game() -> void:
 	reset_run()
@@ -94,6 +224,10 @@ func set_state(new_state: State) -> void:
 func add_time(delta: float) -> void:
 	if current_state == State.PLAYING:
 		time_survived += delta
+		if overdrive_timer > 0.0:
+			overdrive_timer -= delta
+			if overdrive_timer <= 0.0:
+				overdrive_changed.emit(false)
 		stats_updated.emit()
 
 func add_kill() -> void:
@@ -210,12 +344,20 @@ func trigger_game_over(victory: bool = false) -> void:
 	else:
 		AudioManager.play_sfx("game_over")
 		
+	# Accumulate into persistent meta nanite bank
+	var earned = scrap_collected
+	meta_nanites += earned
+	save_game()
+	meta_updated.emit()
+		
 	var final_stats = {
 		"victory": victory,
 		"time": time_survived,
 		"kills": enemies_killed,
 		"scrap": scrap_collected,
 		"level": player_level,
-		"synergies": active_synergies.duplicate()
+		"synergies": active_synergies.duplicate(),
+		"meta_nanites": meta_nanites,
+		"earned_nanites": earned
 	}
 	game_over_screen.emit(final_stats)

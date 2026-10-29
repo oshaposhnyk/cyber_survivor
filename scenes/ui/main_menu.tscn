@@ -10,6 +10,7 @@
 [ext_resource type="Texture2D" path="res://assets/sprites/ui/gi/sfx_on.png" id="8_sfx"]
 [ext_resource type="Texture2D" path="res://assets/sprites/ui/gi/close.png" id="9_close"]
 [ext_resource type="Texture2D" path="res://assets/sprites/player/player_ship_hd.png" id="10_ship"]
+[ext_resource type="Texture2D" path="res://assets/sprites/ui/gi/circuit.png" id="11_circuit"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_crt"]
 shader = ExtResource("3_crt")
@@ -113,6 +114,14 @@ theme_type_variation = &"PrimaryButton"
 theme_override_font_sizes/font_size = 24
 text = "СТАРТ"
 icon = ExtResource("4_play")
+alignment = 0
+
+[node name="CyberdeckBtn" type="Button" parent="VBoxContainer"]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "КІБЕРДЕКА (МОДИ)"
+icon = ExtResource("11_circuit")
 alignment = 0
 
 [node name="InfoBtn" type="Button" parent="VBoxContainer"]

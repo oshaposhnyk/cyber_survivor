@@ -14,6 +14,11 @@ var ambush_timer: float = 45.0
 var mech_boss_timer: float = 40.0
 var boss_spawned: bool = false
 
+# Timers for Champions, Space Hazards, and Data Caches
+var champion_timer: float = 32.0
+var hazard_timer: float = 12.0
+var data_cache_timer: float = 48.0
+
 # Hard cap on live enemies (performance, especially in the web build)
 const MAX_CONCURRENT_ENEMIES: int = 1100
 # Spawn ring just outside the visible area (viewport 1280x720 at camera zoom 0.72)
@@ -123,6 +128,24 @@ func _process(delta: float) -> void:
 		if mech_boss_timer <= 0.0:
 			mech_boss_timer = 35.0 if elapsed < 330.0 else 14.0
 			spawn_specific_enemy("mech", 1)
+
+	# Elite Champions timer
+	champion_timer -= delta
+	if champion_timer <= 0.0:
+		champion_timer = randf_range(34.0, 48.0)
+		spawn_champion()
+
+	# Arena Space Hazards (Volatile Reactors)
+	hazard_timer -= delta
+	if hazard_timer <= 0.0:
+		hazard_timer = 18.0
+		maintain_hazards()
+
+	# Dynamic In-Run Event: Data Cache Drop Pod
+	data_cache_timer -= delta
+	if data_cache_timer <= 0.0:
+		data_cache_timer = randf_range(65.0, 85.0)
+		spawn_data_cache()
 
 func get_pacing() -> Dictionary:
 	var prev = PACING[0]
@@ -234,3 +257,50 @@ func spawn_dreadnought_boss() -> void:
 	var hud = get_tree().get_first_node_in_group("hud")
 	if hud and hud.has_method("show_announcement"):
 		hud.show_announcement("ЧЕРВОНИЙ РІВЕНЬ ЗАГРОЗИ", "Виявлено дредноут «LEVIATHAN-01»")
+
+func spawn_champion() -> void:
+	if not is_instance_valid(GameManager.player_node) or not is_instance_valid(main_scene):
+		return
+	var candidates = ["assault", "spider", "mech", "shield"]
+	var t = candidates.pick_random()
+	var ang = randf() * TAU
+	var pos = GameManager.player_node.global_position + Vector2(cos(ang), sin(ang)) * randf_range(700.0, 950.0)
+	var enemy = enemy_scenes[t].instantiate()
+	enemy.global_position = pos
+	enemy.max_health *= get_hp_mult()
+	enemy.contact_damage *= 1.0 + elapsed / 60.0 * 0.12
+	main_scene.add_child(enemy)
+	if enemy.has_method("make_champion"):
+		enemy.make_champion()
+		
+	var hud = get_tree().get_first_node_in_group("hud")
+	if hud and hud.has_method("show_announcement"):
+		hud.show_announcement("ЕЛІТНИЙ ЧЕМПІОН", "Знищіть чемпіона для отримання граві-магніту!")
+
+func maintain_hazards() -> void:
+	if not is_instance_valid(GameManager.player_node) or not is_instance_valid(main_scene):
+		return
+	var hazards = get_tree().get_nodes_in_group("hazards")
+	if hazards.size() >= 4:
+		return
+	var reactor_scene = preload("res://scenes/objects/volatile_reactor.tscn")
+	var r = reactor_scene.instantiate()
+	var ang = randf() * TAU
+	r.global_position = GameManager.player_node.global_position + Vector2(cos(ang), sin(ang)) * randf_range(500.0, 800.0)
+	main_scene.call_deferred("add_child", r)
+
+func spawn_data_cache() -> void:
+	if not is_instance_valid(GameManager.player_node) or not is_instance_valid(main_scene):
+		return
+	var caches = get_tree().get_nodes_in_group("data_caches")
+	if caches.size() >= 1:
+		return
+	var cache_scene = preload("res://scenes/objects/data_cache.tscn")
+	var cache = cache_scene.instantiate()
+	var ang = randf() * TAU
+	cache.global_position = GameManager.player_node.global_position + Vector2(cos(ang), sin(ang)) * randf_range(600.0, 850.0)
+	main_scene.call_deferred("add_child", cache)
+	
+	var hud = get_tree().get_first_node_in_group("hud")
+	if hud and hud.has_method("show_announcement"):
+		hud.show_announcement("ДАНІ ПОСТАЧАННЯ", "Утримуйте зону контейнера для отримання апгрейду!")

@@ -32,7 +32,9 @@ func show_screen(stats: Dictionary) -> void:
 	var total_sec = int(stats.get("time", 0.0))
 	time_stat.text = "%02d:%02d" % [floori(float(total_sec) / 60.0), total_sec % 60]
 	_count_up(kills_stat, int(stats.get("kills", 0)))
-	_count_up(scrap_stat, int(stats.get("scrap", 0)))
+	var earned = int(stats.get("earned_nanites", stats.get("scrap", 0)))
+	var total_bank = int(stats.get("meta_nanites", GameManager.meta_nanites))
+	scrap_stat.text = "+%d (БАНК: %d)" % [earned, total_bank]
 	level_stat.text = str(stats.get("level", 1))
 	
 	for c in synergies_row.get_children():

@@ -27,7 +27,8 @@ var sound_cooldowns: Dictionary = {
 	"upgrade_select": 0.08,
 	"emp_blast": 0.25,
 	"level_up": 0.3,
-	"victory": 0.4
+	"victory": 0.4,
+	"dash": 0.18
 }
 var last_play_times: Dictionary = {}
 
@@ -83,7 +84,8 @@ func load_sounds() -> void:
 		"upgrade_select": "res://assets/audio/upgrade_select.wav",
 		"ui_hover": "res://assets/audio/ui_hover.wav",
 		"victory": "res://assets/audio/victory.wav",
-		"game_over": "res://assets/audio/game_over.wav"
+		"game_over": "res://assets/audio/game_over.wav",
+		"dash": "res://assets/audio/railgun_fire.wav"
 	}
 	for key in files.keys():
 		var paths: Array = files[key] if files[key] is Array else [files[key]]
@@ -146,6 +148,8 @@ func play_sfx(sound_name: String, pitch_rnd: float = 0.08, volume_offset_db: flo
 		scrap_combo += 1
 		scrap_combo_timer = 0.45
 		base_pitch = clampf(1.0 + float(scrap_combo) * 0.035, 1.0, 1.65)
+	elif sound_name == "dash":
+		base_pitch = 1.75
 	
 	player.volume_db = -7.0 + volume_offset_db
 	player.pitch_scale = base_pitch + randf_range(-pitch_rnd, pitch_rnd)

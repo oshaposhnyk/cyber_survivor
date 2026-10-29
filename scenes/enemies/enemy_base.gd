@@ -46,6 +46,13 @@ var slow_mult: float = 1.0
 var ward_time: float = 0.0
 var ward_mult: float = 1.0
 
+# Elite Champion Variant System
+enum ChampionType { NONE, HASTE, JAMMER, MENDER }
+var champion_type: ChampionType = ChampionType.NONE
+var is_champion: bool = false
+var champion_aura_timer: float = 0.0
+var champion_pulse_time: float = 0.0
+
 # Swarm natural dispersal angle so enemies naturally envelop the player
 var swarm_angle_offset: float = 0.0
 
@@ -155,6 +162,14 @@ func _physics_process(delta: float) -> void:
 		return
 	update_status(delta)
 
+	if is_champion:
+		champion_pulse_time += delta * 4.0
+		champion_aura_timer -= delta
+		if champion_aura_timer <= 0.0:
+			champion_aura_timer = 0.6
+			apply_champion_aura()
+		queue_redraw()
+
 	# Handle EMP Stun
 	if stun_timer > 0.0:
 		stun_timer -= delta
@@ -182,6 +197,65 @@ func _physics_process(delta: float) -> void:
 	knockback = knockback.move_toward(Vector2.ZERO, 700.0 * delta)
 	step_motion(delta)
 	apply_contact(to_player, delta)
+
+func make_champion(p_type: ChampionType = ChampionType.NONE) -> void:
+	is_champion = true
+	if p_type == ChampionType.NONE:
+		var types = [ChampionType.HASTE, ChampionType.JAMMER, ChampionType.MENDER]
+		champion_type = types.pick_random()
+	else:
+		champion_type = p_type
+		
+	max_health *= 3.5
+	current_health = max_health
+	contact_damage *= 1.4
+	score_points *= 4
+	scrap_count += 3
+	gold_chance = 0.6
+	
+	if sprite:
+		sprite.scale *= 1.35
+	if shadow:
+		shadow.scale *= 1.35
+	queue_redraw()
+
+func apply_champion_aura() -> void:
+	match champion_type:
+		ChampionType.HASTE:
+			for e in EnemyRegistry.in_radius(global_position, 220.0):
+				if e != self and is_instance_valid(e) and e.has_method("apply_slow"):
+					e.apply_slow(0.8, 1.45)
+		ChampionType.JAMMER:
+			# Jamming pulse effect
+			pass
+		ChampionType.MENDER:
+			for e in EnemyRegistry.in_radius(global_position, 200.0):
+				if e != self and is_instance_valid(e) and "current_health" in e and "max_health" in e:
+					if e.current_health < e.max_health:
+						e.current_health = min(e.max_health, e.current_health + e.max_health * 0.08)
+
+func _draw() -> void:
+	if not is_champion:
+		return
+	var pulse = (sin(champion_pulse_time) + 1.0) * 0.5
+	var aura_col = Color(1.0, 0.8, 0.15)
+	match champion_type:
+		ChampionType.HASTE:
+			aura_col = Color(1.0, 0.8, 0.15)
+		ChampionType.JAMMER:
+			aura_col = Color(0.9, 0.2, 1.0)
+		ChampionType.MENDER:
+			aura_col = Color(0.2, 1.0, 0.45)
+			
+	draw_arc(Vector2.ZERO, 38.0 + pulse * 6.0, 0, TAU, 24, Color(aura_col.r, aura_col.g, aura_col.b, 0.45), 2.0)
+	draw_circle(Vector2.ZERO, 38.0 + pulse * 6.0, Color(aura_col.r, aura_col.g, aura_col.b, 0.06))
+	
+	# Tech brackets above the enemy
+	var top_y = -34.0
+	draw_line(Vector2(-14, top_y), Vector2(-6, top_y - 6), aura_col, 2.0)
+	draw_line(Vector2(-6, top_y - 6), Vector2(6, top_y - 6), aura_col, 2.0)
+	draw_line(Vector2(6, top_y - 6), Vector2(14, top_y), aura_col, 2.0)
+	draw_circle(Vector2(0, top_y - 6), 2.5, Color.WHITE)
 
 func apply_stun(duration: float) -> void:
 	stun_timer = max(stun_timer, duration)
@@ -287,6 +361,15 @@ static func spawn_pickup(parent: Node, pos: Vector2, p_type: int) -> void:
 	parent.call_deferred("add_child", p)
 
 func drop_loot() -> void:
+	if is_champion:
+		var beacon = preload("res://scenes/pickups/magnet_beacon.tscn").instantiate()
+		beacon.global_position = global_position
+		get_parent().call_deferred("add_child", beacon)
+		var ft = preload("res://scenes/effects/floating_text.tscn").instantiate()
+		ft.global_position = global_position + Vector2(0, -32)
+		get_parent().call_deferred("add_child", ft)
+		ft.setup("+ ЧЕМПІОНА ЗНИЩЕНО! +", Color(1.0, 0.85, 0.2), 1.8)
+
 	if randf() < repair_chance:
 		spawn_pickup(get_parent(), global_position, 2) # REPAIR
 		return

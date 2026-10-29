@@ -1,6 +1,7 @@
 extends Control
 
 @onready var start_btn: Button = $VBoxContainer/StartBtn
+@onready var cyberdeck_btn: Button = $VBoxContainer/CyberdeckBtn
 @onready var info_btn: Button = $VBoxContainer/InfoBtn
 @onready var credits_btn: Button = $VBoxContainer/CreditsBtn
 @onready var music_btn: Button = $TopControls/MusicBtn
@@ -10,6 +11,11 @@ extends Control
 @onready var close_info_btn: Button = $InfoDialog/Margin/VBox/Header/CloseInfoBtn
 @onready var info_text: RichTextLabel = $InfoDialog/Margin/VBox/InfoText
 @onready var ship: Sprite2D = $Ship
+
+# Cyberdeck Permanent Upgrades Dialog
+var cyberdeck_dialog: PanelContainer
+var nanites_label: Label
+var upgrades_container: VBoxContainer
 
 const ENEMY_SPRITES = [
 	"res://assets/sprites/enemies/scout_drone.png",
@@ -28,14 +34,16 @@ var ship_base: Vector2
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	start_btn.pressed.connect(_on_start_pressed)
+	cyberdeck_btn.pressed.connect(_on_cyberdeck_pressed)
 	info_btn.pressed.connect(_on_info_pressed)
 	credits_btn.pressed.connect(_on_credits_pressed)
 	close_info_btn.pressed.connect(func(): info_dialog.visible = false)
 	music_btn.pressed.connect(_on_toggle_music)
 	sfx_btn.pressed.connect(_on_toggle_sfx)
-	for b in [start_btn, info_btn, credits_btn, music_btn, sfx_btn, close_info_btn]:
+	for b in [start_btn, cyberdeck_btn, info_btn, credits_btn, music_btn, sfx_btn, close_info_btn]:
 		b.mouse_entered.connect(func(): AudioManager.play_sfx("ui_hover", 0.05, -8.0))
 	info_dialog.visible = false
+	_build_cyberdeck_dialog()
 	ship_base = ship.position
 
 	_sync_audio_icons()
@@ -148,8 +156,8 @@ func _on_info_pressed() -> void:
 	AudioManager.play_sfx("laser", 0.1, -4.0)
 	dialog_title.text = "КЕРУВАННЯ"
 	info_dialog.visible = true
-	info_text.text = "%s %s  рух\n\n%s %s  модернізація\n\n%s  пауза / закрити\n\n" % [
-		_key("W A S D"), _key("СТРІЛКИ"), _key("TAB"), _key("T"), _key("ESC")] + \
+	info_text.text = "%s %s  рух\n\n%s %s  ривок / фазовий зсув\n\n%s %s  модернізація\n\n%s  пауза / закрити\n\n" % [
+		_key("W A S D"), _key("СТРІЛКИ"), _key("ПРОБІЛ"), _key("SHIFT"), _key("TAB"), _key("T"), _key("ESC")] + \
 		"[color=#8c8fa8]Протримайся 7 хвилин. Збирай брухт, качай модулі, поєднуй їх у синергії:[/color]\n\n" + \
 		"%s %s  [color=#ff4dd9]=[/color]  %s          " % [_img("blaster", "#ff003c"), _img("conductor", "#fcee0a"), _img("plasma_storm", "#ff4dd9")] + \
 		"%s %s  [color=#ff4dd9]=[/color]  %s\n\n" % [_img("shield", "#00f0ff"), _img("emp", "#fcee0a"), _img("emp_apocalypse", "#ff4dd9")] + \
@@ -157,6 +165,129 @@ func _on_info_pressed() -> void:
 		"%s %s  [color=#ff4dd9]=[/color]  %s\n\n" % [_img("repair", "#00f0ff"), _img("drones", "#ff003c"), _img("nanite_bastion", "#ff4dd9")] + \
 		"%s %s  [color=#ff4dd9]=[/color]  %s          " % [_img("virus", "#33ff8c"), _img("emp", "#fcee0a"), _img("black_ice", "#ff4dd9")] + \
 		"%s %s  [color=#ff4dd9]=[/color]  %s" % [_img("data_spike", "#33ff8c"), _img("drones", "#ff003c"), _img("ghost_swarm", "#ff4dd9")]
+
+func _on_cyberdeck_pressed() -> void:
+	AudioManager.play_sfx("laser", 0.1, -4.0)
+	if is_instance_valid(cyberdeck_dialog):
+		info_dialog.visible = false
+		cyberdeck_dialog.visible = true
+		_refresh_cyberdeck_dialog()
+
+func _build_cyberdeck_dialog() -> void:
+	cyberdeck_dialog = PanelContainer.new()
+	cyberdeck_dialog.theme_type_variation = &"CyberPanel"
+	cyberdeck_dialog.position = Vector2(230, 60)
+	cyberdeck_dialog.custom_minimum_size = Vector2(820, 580)
+	cyberdeck_dialog.visible = false
+	
+	var margin = MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 24)
+	margin.add_theme_constant_override("margin_right", 24)
+	margin.add_theme_constant_override("margin_top", 20)
+	margin.add_theme_constant_override("margin_bottom", 20)
+	
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 14)
+	
+	# Header
+	var header = HBoxContainer.new()
+	var title = Label.new()
+	title.theme_type_variation = &"HeadingLabel"
+	title.text = "КІБЕРДЕКА: ПОСТІЙНІ МОДИФІКАЦІЇ"
+	header.add_child(title)
+	
+	var spacer = Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.add_child(spacer)
+	
+	var close_btn = Button.new()
+	close_btn.text = "✖ ЗАКРИТИ"
+	close_btn.pressed.connect(func(): cyberdeck_dialog.visible = false)
+	header.add_child(close_btn)
+	vbox.add_child(header)
+	
+	# Nanites balance banner
+	var bal_box = HBoxContainer.new()
+	nanites_label = Label.new()
+	nanites_label.theme_type_variation = &"MonoLabel"
+	nanites_label.add_theme_font_size_override("font_size", 18)
+	nanites_label.add_theme_color_override("font_color", Color(0.2, 0.9, 1.0))
+	bal_box.add_child(nanites_label)
+	vbox.add_child(bal_box)
+	
+	# Upgrades scroll container
+	var scroll = ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(760, 420)
+	upgrades_container = VBoxContainer.new()
+	upgrades_container.add_theme_constant_override("separation", 10)
+	scroll.add_child(upgrades_container)
+	vbox.add_child(scroll)
+	
+	margin.add_child(vbox)
+	cyberdeck_dialog.add_child(margin)
+	add_child(cyberdeck_dialog)
+
+func _refresh_cyberdeck_dialog() -> void:
+	if not is_instance_valid(upgrades_container):
+		return
+	nanites_label.text = "БАЛАНС НАНІТІВ: %d ⬡  (зберігаються між усіма забігами)" % GameManager.meta_nanites
+	for c in upgrades_container.get_children():
+		c.queue_free()
+		
+	for key in GameManager.META_UPGRADE_DEFS.keys():
+		var def = GameManager.META_UPGRADE_DEFS[key]
+		var lvl = GameManager.get_meta_upgrade_level(key)
+		var max_lvl = def["max_lvl"]
+		var cost = GameManager.get_meta_upgrade_cost(key)
+		var can_afford = GameManager.meta_nanites >= cost and lvl < max_lvl
+		
+		var card = PanelContainer.new()
+		card.theme_type_variation = &"HudPlate"
+		var hbox = HBoxContainer.new()
+		hbox.add_theme_constant_override("separation", 16)
+		
+		# Icon
+		var icon_rect = TextureRect.new()
+		icon_rect.custom_minimum_size = Vector2(40, 40)
+		icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		if ResourceLoader.exists(def["icon"]):
+			icon_rect.texture = load(def["icon"])
+		icon_rect.self_modulate = Color(0.2, 0.9, 1.0)
+		hbox.add_child(icon_rect)
+		
+		# Info VBox
+		var info_box = VBoxContainer.new()
+		info_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var name_lbl = Label.new()
+		name_lbl.theme_type_variation = &"HeadingLabel"
+		name_lbl.text = "%s  [%d/%d]" % [def["name"], lvl, max_lvl]
+		if lvl >= max_lvl:
+			name_lbl.add_theme_color_override("font_color", Color(1.0, 0.85, 0.2))
+		var desc_lbl = Label.new()
+		desc_lbl.theme_type_variation = &"DimLabel"
+		desc_lbl.text = def["desc"]
+		info_box.add_child(name_lbl)
+		info_box.add_child(desc_lbl)
+		hbox.add_child(info_box)
+		
+		# Action Button
+		var buy_btn = Button.new()
+		buy_btn.custom_minimum_size = Vector2(180, 42)
+		if lvl >= max_lvl:
+			buy_btn.text = "МАКСИМУМ"
+			buy_btn.disabled = true
+		else:
+			buy_btn.text = "МОДИФІКУВАТИ (%d ⬡)" % cost
+			buy_btn.disabled = not can_afford
+			buy_btn.pressed.connect(func():
+				if GameManager.buy_meta_upgrade(key):
+					_refresh_cyberdeck_dialog()
+			)
+		hbox.add_child(buy_btn)
+		
+		card.add_child(hbox)
+		upgrades_container.add_child(card)
 
 func _on_credits_pressed() -> void:
 	AudioManager.play_sfx("laser", 0.1, -4.0)

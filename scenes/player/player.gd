@@ -25,6 +25,21 @@ var thorns_dps: float:
 var is_thrusting: bool = false
 var thruster_time: float = 0.0
 
+# Phase Shift / Dash Ability
+var dash_cooldown_base: float = 3.2
+var dash_cooldown: float:
+	get:
+		var ovc = pow(0.92, GameManager.get_skill_level("cooldown"))
+		var meta = 1.0 - GameManager.get_meta_upgrade_level("dash") * 0.12
+		return dash_cooldown_base * ovc * meta
+var dash_timer: float = 0.0
+var is_dashing: bool = false
+var dash_duration: float = 0.22
+var dash_time_left: float = 0.0
+var dash_dir: Vector2 = Vector2.UP
+var afterimages: Array[Dictionary] = []
+var afterimage_spawn_timer: float = 0.0
+
 # Weapon ports toggles
 var blaster_barrel_toggle: int = 0
 var missile_pod_toggle: int = 0
@@ -88,6 +103,19 @@ func _draw() -> void:
 			var col: Color = s["color"]
 			draw_circle(s["pos"], s["size"], Color(col.r, col.g, col.b, a))
 			draw_line(s["pos"], s["pos"] - s["vel"] * 0.025, Color(1.0, 0.6, 0.1, a * 0.7), 1.5)
+			
+	# 3. Holographic Phase Shift Afterimages
+	for a in afterimages:
+		var rel_pos = to_local(a["pos"])
+		draw_set_transform(rel_pos, a["rot"] - rotation, Vector2.ONE)
+		var col = Color(0.2, 0.9, 1.0, a["alpha"] * 0.65)
+		var pts = PackedVector2Array([
+			Vector2(0, -20), Vector2(16, 14), Vector2(0, 7), Vector2(-16, 14)
+		])
+		draw_polygon(pts, PackedColorArray([Color(0.1, 0.8, 1.0, a["alpha"] * 0.2)]))
+		draw_polyline(pts, col, 2.0)
+		draw_line(Vector2(-16, 14), Vector2(0, -20), col, 2.0)
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 # Weapon Timers
 var blaster_timer: float = 0.0
@@ -120,9 +148,14 @@ func _ready() -> void:
 	apply_upgrades()
 
 func apply_upgrades() -> void:
+	# Meta upgrades integration
+	var meta_hull = GameManager.get_meta_upgrade_level("hull") * 10.0
+	var meta_spd_mult = 1.0 + GameManager.get_meta_upgrade_level("speed") * 0.04
+	var effective_base_hp = base_max_hp + meta_hull
+	
 	# 1. Armor & Health
 	var armor_lvl = GameManager.get_skill_level("armor")
-	max_hp = (base_max_hp + armor_lvl * 35.0) * GameManager.doctrine_mod("hp")
+	max_hp = (effective_base_hp + armor_lvl * 35.0) * GameManager.doctrine_mod("hp")
 	current_hp = min(current_hp, max_hp)
 	damage_reduction = armor_lvl * 0.12
 	thorns_base = GameManager.doctrine_mod("thorns", 0.0)
@@ -145,8 +178,9 @@ func apply_upgrades() -> void:
 		
 	# 4. Magnet Radius
 	var magnet_lvl = GameManager.get_skill_level("magnet")
+	var meta_mag_mult = 1.0 + GameManager.get_meta_upgrade_level("magnet") * 0.15
 	if magnet_shape and magnet_shape.shape is CircleShape2D:
-		magnet_shape.shape.radius = 85.0 + magnet_lvl * 60.0
+		magnet_shape.shape.radius = (85.0 + magnet_lvl * 60.0) * meta_mag_mult
 		
 	# 5. Orbital Drones Rebuild
 	update_orbital_drones()
@@ -201,6 +235,16 @@ func _physics_process(delta: float) -> void:
 				alive_sparks.append(s)
 		damage_sparks = alive_sparks
 		queue_redraw()
+		
+	# Update dash afterimages
+	if afterimages.size() > 0:
+		var alive_after: Array[Dictionary] = []
+		for a in afterimages:
+			a["alpha"] -= delta * 3.6
+			if a["alpha"] > 0.0:
+				alive_after.append(a)
+		afterimages = alive_after
+		queue_redraw()
 
 func handle_movement(delta: float) -> void:
 	var input_vec = Vector2.ZERO
@@ -209,16 +253,60 @@ func handle_movement(delta: float) -> void:
 	input_vec = input_vec.normalized()
 	
 	var speed_lvl = GameManager.get_skill_level("speed")
-	var move_speed = base_speed * (1.0 + speed_lvl * 0.18) * GameManager.doctrine_mod("speed")
+	var meta_spd_mult = 1.0 + GameManager.get_meta_upgrade_level("speed") * 0.04
+	var move_speed = base_speed * meta_spd_mult * (1.0 + speed_lvl * 0.18) * GameManager.doctrine_mod("speed")
 	
-	velocity = input_vec * move_speed
-	move_and_slide()
+	# Dash cooldown update
+	if dash_timer > 0.0:
+		dash_timer -= delta
+		GameManager.dash_updated.emit(dash_timer, dash_cooldown)
+	else:
+		GameManager.dash_updated.emit(0.0, dash_cooldown)
+
+	if Input.is_action_just_pressed("dash") and dash_timer <= 0.0 and not is_dashing:
+		start_dash(input_vec)
+
+	if is_dashing:
+		dash_time_left -= delta
+		velocity = dash_dir * (move_speed * 3.2)
+		move_and_slide()
+		afterimage_spawn_timer -= delta
+		if afterimage_spawn_timer <= 0.0:
+			afterimage_spawn_timer = 0.04
+			spawn_afterimage()
+		if dash_time_left <= 0.0:
+			is_dashing = false
+	else:
+		velocity = input_vec * move_speed
+		move_and_slide()
 	
-	is_thrusting = input_vec.length() > 0.05
+	is_thrusting = (input_vec.length() > 0.05) or is_dashing
 	queue_redraw()
 	
-	if is_thrusting:
+	if input_vec.length() > 0.05:
 		rotation = lerp_angle(rotation, input_vec.angle() + PI / 2.0, 12.0 * delta)
+
+func start_dash(input_vec: Vector2) -> void:
+	is_dashing = true
+	dash_time_left = dash_duration
+	dash_timer = dash_cooldown
+	dash_dir = input_vec if input_vec.length() > 0.1 else Vector2.UP.rotated(rotation - PI / 2.0)
+	AudioManager.play_sfx("dash", 0.12, 1.5)
+	spawn_afterimage()
+	
+	# Dash EMP shockwave pushes & stuns lightweight enemies nearby
+	for e in EnemyRegistry.in_radius(global_position, 95.0):
+		if e.has_method("apply_slow"):
+			e.apply_slow(0.8, 0.4)
+		if e.has_method("take_damage"):
+			e.take_damage(25.0 * GameManager.doctrine_mod("dmg"))
+
+func spawn_afterimage() -> void:
+	afterimages.append({
+		"pos": global_position,
+		"rot": rotation,
+		"alpha": 0.8
+	})
 
 func handle_shield_recharge(delta: float) -> void:
 	if max_shield <= 0.0:
@@ -245,6 +333,8 @@ func handle_weapons(delta: float) -> void:
 	var cd_mult = pow(0.88, cd_lvl)
 	# Doctrine fire-rate change hits ship weapons only, not turrets and mines
 	var ship_cd = cd_mult * GameManager.doctrine_mod("cd")
+	if GameManager.overdrive_timer > 0.0:
+		ship_cd *= 0.65
 	
 	# 1. Pulse Blaster
 	var blaster_lvl = GameManager.get_skill_level("blaster")
@@ -466,6 +556,10 @@ func near_turret(radius: float) -> bool:
 	return false
 
 func take_damage(amount: float, source_pos: Vector2 = Vector2.ZERO) -> void:
+	if is_dashing:
+		# Phase Shift invulnerability frames (i-frames)
+		return
+		
 	var actual_damage = amount * (1.0 - damage_reduction) * GameManager.doctrine_mod("taken")
 	# Fortress synergy: turret perimeter shields the hull
 	if GameManager.is_synergy_active("fortress") and near_turret(170.0):
@@ -505,6 +599,19 @@ func take_damage(amount: float, source_pos: Vector2 = Vector2.ZERO) -> void:
 		GameManager.player_damaged.emit(current_hp, max_hp, current_shield, max_shield)
 	
 	if current_hp <= 0.0:
+		if GameManager.has_reboot_available():
+			GameManager.consume_reboot()
+			current_hp = max_hp * 0.5
+			current_shield = max_shield * 0.5
+			fire_emp(3, true)
+			AudioManager.play_sfx("emp_blast", 0.05, 3.0)
+			var ft_scene = preload("res://scenes/effects/floating_text.tscn")
+			var ft = ft_scene.instantiate()
+			ft.global_position = global_position + Vector2(0, -35)
+			get_parent().add_child(ft)
+			ft.setup("АВАРІЙНИЙ РЕБУТ!", Color(0.2, 1.0, 0.9), 2.2)
+			GameManager.player_damaged.emit(current_hp, max_hp, current_shield, max_shield)
+			return
 		die()
 
 func heal(amount: float) -> void:
