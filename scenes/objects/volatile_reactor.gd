@@ -9,6 +9,10 @@ var is_dead: bool = false
 var hit_flash: float = 0.0
 var pulse_time: float = 0.0
 var drift_dir: Vector2 = Vector2.ZERO
+# Hit circle for registry-based projectile hits (matches the CollisionShape2D)
+var hit_radius: float = 24.0
+# Left behind by the player: removed, so wave_manager (max 4) spawns new ones nearby
+const DESPAWN_DIST := 1800.0
 
 @onready var sprite: Sprite2D = $Sprite2D
 @onready var collision_shape: CollisionShape2D = $CollisionShape2D
@@ -29,6 +33,10 @@ func _ready() -> void:
 	drift_dir = Vector2(randf_range(-1, 1), randf_range(-1, 1)).normalized() * randf_range(12.0, 24.0)
 
 func _physics_process(delta: float) -> void:
+	var player = GameManager.player_node
+	if is_instance_valid(player) and global_position.distance_squared_to(player.global_position) > DESPAWN_DIST * DESPAWN_DIST:
+		queue_free()
+		return
 	pulse_time += delta * 3.5
 	rotation += delta * 0.4
 	velocity = drift_dir
@@ -116,11 +124,7 @@ func detonate() -> void:
 	AudioManager.play_sfx("heavy_explosion", 0.05, 3.0)
 	
 	# Drop bonus scraps
-	var scrap_scene = preload("res://scenes/pickups/nanite_scrap.tscn")
 	for i in range(4):
-		var s = scrap_scene.instantiate()
-		s.global_position = global_position + Vector2(randf_range(-25, 25), randf_range(-25, 25))
-		s.setup(1) # Gold scrap
-		main.call_deferred("add_child", s)
+		EnemyBase.spawn_pickup(main, global_position + Vector2(randf_range(-25, 25), randf_range(-25, 25)), 1) # Gold scrap
 		
 	queue_free()

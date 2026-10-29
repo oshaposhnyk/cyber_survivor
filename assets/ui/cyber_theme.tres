@@ -5,17 +5,21 @@
 [ext_resource type="Texture2D" path="res://assets/sprites/ui/bar_segment.png" id="3_seg"]
 
 ; Cyberpunk UI theme. Palette: yellow #FCEE0A, red #FF003C, cyan #00F0FF on near-black.
+; Tektur variations fall back to JetBrains Mono for symbols Tektur lacks (■ □ ◆ ► ▲ ⚡).
 ; Chamfered corners = corner_radius + corner_detail 1. Variable font weights via OpenType tag 'wght' (2003265652).
 
 [sub_resource type="FontVariation" id="FV_body"]
+fallbacks = Array[Font]([ExtResource("2_mono")])
 base_font = ExtResource("1_tektur")
 variation_opentype = {2003265652: 500}
 
 [sub_resource type="FontVariation" id="FV_bold"]
+fallbacks = Array[Font]([ExtResource("2_mono")])
 base_font = ExtResource("1_tektur")
 variation_opentype = {2003265652: 750}
 
 [sub_resource type="FontVariation" id="FV_black"]
+fallbacks = Array[Font]([ExtResource("2_mono")])
 base_font = ExtResource("1_tektur")
 variation_opentype = {2003265652: 900}
 spacing_glyph = 2
@@ -373,6 +377,9 @@ MonoLabel/base_type = &"Label"
 MonoLabel/colors/font_color = Color(0.95, 0.95, 0.98, 1)
 MonoLabel/fonts/font = SubResource("FV_mono")
 MonoLabel/font_sizes/font_size = 20
+FloatingText/base_type = &"Label"
+FloatingText/colors/font_color = Color(1, 1, 1, 1)
+FloatingText/fonts/font = SubResource("FV_bold")
 DimLabel/base_type = &"Label"
 DimLabel/colors/font_color = Color(0.55, 0.56, 0.66, 1)
 DimLabel/font_sizes/font_size = 13

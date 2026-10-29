@@ -9,7 +9,7 @@ extends Area2D
 
 var velocity: Vector2 = Vector2.ZERO
 var hits_done: int = 0
-var hit_enemies: Array[Node2D] = []
+var hit_enemies: Array = []
 
 # Trailing plasma line history
 var trail: Array[Vector2] = []
@@ -49,15 +49,22 @@ func setup(p_position: Vector2, p_direction: Vector2, p_damage: float, p_pierce:
 	can_chain = p_chain
 	spawn_pos = p_position
 
+# Hit circle of the bolt; enemies are found through EnemyRegistry, not physics
+const HIT_RADIUS := 6.0
+
 func _ready() -> void:
-	collision_layer = 4
-	collision_mask = 2
+	collision_layer = 0
+	collision_mask = 0
+	monitoring = false
+	monitorable = false
 	if spawn_pos == Vector2.ZERO:
 		spawn_pos = global_position
 	arc_a.resize(MAX_ARCS)
 	arc_b.resize(MAX_ARCS)
 	arc_life.resize(MAX_ARCS)
 	is_storm = can_chain and GameManager.is_synergy_active("plasma_storm")
+	if can_chain:
+		chain_targets_count = GameManager.chain_targets()
 	var tint := STORM_MAGENTA if is_storm else BOLT_CYAN
 	glow.modulate = Color(tint, 0.85)
 	if is_storm:
@@ -82,6 +89,15 @@ func _physics_process(delta: float) -> void:
 
 	global_position += velocity * delta
 	queue_redraw()
+	var hit = EnemyRegistry.first_hit(global_position, HIT_RADIUS, hit_enemies)
+	if hit:
+		_on_hit(hit)
+		return
+	# Clash: a bolt that meets a hostile shot destroys it and is spent too
+	var shots = EnemyShots.in_radius(global_position, HIT_RADIUS + 6.0)
+	if not shots.is_empty():
+		shots[0].pop(STORM_MAGENTA if is_storm else BOLT_CYAN)
+		_start_impact(global_position)
 
 	lifetime -= delta
 	if lifetime <= 0:
@@ -158,12 +174,11 @@ func _start_impact(at: Vector2) -> void:
 		return
 	impact_pos = at
 	impact_timer = IMPACT_TIME
-	set_deferred("monitoring", false)
 	sprite.visible = false
 	glow.visible = false
 
-func _on_body_entered(body: Node2D) -> void:
-	if not body.is_in_group("enemies") or body in hit_enemies:
+func _on_hit(body: Object) -> void:
+	if body in hit_enemies:
 		return
 
 	hit_enemies.append(body)
@@ -179,7 +194,7 @@ func _on_body_entered(body: Node2D) -> void:
 		# Was queue_free(): the bolt now stops, stops monitoring and frees after the hit flash
 		_start_impact(global_position)
 
-func trigger_chain_lightning(origin_enemy: Node2D) -> void:
+func trigger_chain_lightning(origin_enemy: Object) -> void:
 	var exclude: Array = hit_enemies.duplicate()
 	exclude.append(origin_enemy)
 	var origin_pos = origin_enemy.global_position

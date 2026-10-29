@@ -8,6 +8,9 @@ const ACCENT := Color(1.0, 0.55, 0.15)
 const ZAP_COLOR := Color(0.55, 0.85, 1.0)
 const FORTRESS_RADIUS := 170.0
 const MAX_ZAP_LINES := 6
+# CIWS: a turret with a tesla coil or missile battery zaps one hostile shot nearby
+const CIWS_RANGE := 140.0
+const CIWS_INTERVAL := 0.35
 const BOLT_SCENE := preload("res://scenes/weapons/blaster_bolt.tscn")
 const MISSILE_SCENE := preload("res://scenes/weapons/missile.tscn")
 
@@ -27,6 +30,9 @@ var age: float = 0.0
 var muzzle_flash: float = 0.0
 var zap_lines: Array[PackedVector2Array] = []
 var zap_life: float = 0.0
+var ciws_timer: float = 0.0
+# ENG-05 dome: radius 0 when the skill is not learned
+var dome_radius: float = 0.0
 
 func setup(p_pos: Vector2, p_damage: float, p_lifetime: float, p_tesla: int, p_battery: int, p_fortress: bool) -> void:
 	global_position = p_pos
@@ -41,6 +47,8 @@ func setup(p_pos: Vector2, p_damage: float, p_lifetime: float, p_tesla: int, p_b
 
 func _ready() -> void:
 	z_index = 4
+	if GameManager.get_skill_level("dome") > 0 and is_instance_valid(GameManager.player_node):
+		dome_radius = GameManager.player_node.dome_radius()
 
 func _physics_process(delta: float) -> void:
 	age += delta
@@ -63,6 +71,14 @@ func _physics_process(delta: float) -> void:
 			tesla_timer = 1.8
 			discharge_tesla()
 
+	if dome_radius > 0.0:
+		EnemyShots.clear_radius(global_position, dome_radius, ACCENT)
+
+	if tesla_lvl > 0 or battery_lvl > 0:
+		ciws_timer -= delta
+		if ciws_timer <= 0.0 and run_ciws():
+			ciws_timer = CIWS_INTERVAL
+
 	if battery_lvl > 0:
 		battery_timer -= delta
 		if battery_timer <= 0.0:
@@ -78,9 +94,25 @@ func fire_bolt() -> void:
 	var dir = (found[0].global_position - global_position).normalized()
 	aim_angle = dir.angle()
 	var bolt = BOLT_SCENE.instantiate()
-	bolt.setup(global_position + dir * 22.0, dir, damage, 1, false)
+	bolt.setup(global_position + dir * 22.0, dir, damage, 1, GameManager.get_skill_level("conductor") > 0)
 	get_parent().add_child(bolt)
 	muzzle_flash = 1.0
+
+# Shoots down the nearest hostile shot; true when one was hit
+func run_ciws() -> bool:
+	var shots = EnemyShots.in_radius(global_position, CIWS_RANGE)
+	if shots.is_empty():
+		return false
+	var best = shots[0]
+	for s in shots:
+		if global_position.distance_squared_to(s.global_position) < global_position.distance_squared_to(best.global_position):
+			best = s
+	var to_s: Vector2 = best.global_position - global_position
+	best.pop(ZAP_COLOR)
+	zap_lines.clear()
+	zap_lines.append(_jagged(Vector2.ZERO, to_s))
+	zap_life = 1.0
+	return true
 
 func tesla_radius() -> float:
 	return 110.0 * (1.0 + 0.25 * (tesla_lvl - 1))
@@ -130,6 +162,13 @@ func _draw() -> void:
 	if age < 0.5:
 		var k = age / 0.5
 		draw_arc(Vector2.ZERO, 14.0 + 40.0 * k, 0.0, TAU, 24, Color(ACCENT, 1.0 - k), 2.0)
+
+	# Dome generator: faint fill, rotating segmented rim
+	if dome_radius > 0.0:
+		draw_circle(Vector2.ZERO, dome_radius, Color(ACCENT, 0.06))
+		for i in range(12):
+			var da := age * 0.5 + TAU * i / 12.0
+			draw_arc(Vector2.ZERO, dome_radius, da, da + TAU / 24.0, 4, Color(ACCENT, 0.55), 2.0)
 
 	if is_fortress:
 		draw_circle(Vector2.ZERO, FORTRESS_RADIUS, Color(ACCENT, 0.04))

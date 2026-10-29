@@ -20,7 +20,7 @@ var hp_regen_rate: float = 0.0
 var thorns_base: float = 0.0
 var thorns_dps: float:
 	get:
-		return thorns_base * (1.0 + GameManager.time_survived / 120.0)
+		return thorns_base * GameManager.damage_scale()
 
 var is_thrusting: bool = false
 var thruster_time: float = 0.0
@@ -40,6 +40,35 @@ var dash_dir: Vector2 = Vector2.UP
 var afterimages: Array[Dictionary] = []
 var afterimage_spawn_timer: float = 0.0
 var dash_sparks: Array[Dictionary] = []
+
+# Anti-projectile systems (see EnemyShots)
+# Time dilation field (speed + cooldown skills): hostile shots inside slow down
+const DILATION_RADIUS := 200.0
+var dilation_radius: float = 0.0
+var dilation_slow: float = 0.0
+# Aegis Perimeter (Tank doctrine): shot-proof dome on a heavy hit or every 15 s
+const AEGIS_RADIUS := 110.0
+const AEGIS_TIME := 2.5
+const AEGIS_PERIOD := 15.0
+const AEGIS_HEAVY_HIT := 0.15
+var aegis_time: float = 0.0
+var aegis_cd: float = AEGIS_PERIOD
+# Dash vacuum trail: half width of the cleared lane
+const DASH_TRAIL_WIDTH := 40.0
+
+# Tier-5 skills
+const STRIKE_SEARCH := 800.0
+const REBOOT_RADIUS := 220.0
+const STASIS_RANGE := 1300.0
+const MIND_RANGE := 600.0
+const SHOOTER_KINDS := ["assault", "mech"]
+var strike_timer: float = 2.0
+var reboot_cd: float = 0.0
+var nova_time: float = 0.0
+var stasis_cd: float = 8.0
+var stasis_time: float = 0.0
+var stasis_ring: float = 0.0
+var mind_cd: float = 4.0
 
 # Weapon ports toggles
 var blaster_barrel_toggle: int = 0
@@ -97,6 +126,60 @@ func _draw() -> void:
 		draw_circle(Vector2.ZERO, glitch_radius, Color(0.2, 1.0, 0.55, 0.04))
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	
+	# Time dilation field: slow dashed overclock ring
+	if dilation_radius > 0.0:
+		draw_set_transform(Vector2.ZERO, -rotation, Vector2.ONE)
+		var dseg = 36
+		for i in range(dseg):
+			if i % 2 == 0:
+				var da = TAU * i / dseg + Time.get_ticks_msec() * 0.0002
+				draw_arc(Vector2.ZERO, dilation_radius, da, da + TAU / dseg, 3, Color(CyberPalette.YELLOW, 0.22), 1.5)
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+	# Aegis Perimeter: cyan hex dome, same language as the shield FX
+	if aegis_time > 0.0:
+		draw_set_transform(Vector2.ZERO, -rotation, Vector2.ONE)
+		var fade = clampf(aegis_time / 0.4, 0.0, 1.0)
+		var hex := PackedVector2Array()
+		for i in range(7):
+			var ha = TAU * i / 6.0 + PI / 6.0
+			hex.append(Vector2(cos(ha), sin(ha)) * AEGIS_RADIUS)
+		draw_colored_polygon(hex, Color(CyberPalette.CYAN, 0.08 * fade))
+		draw_polyline(hex, Color(CyberPalette.CYAN, 0.75 * fade), 3.0)
+		for i in range(6):
+			draw_circle(hex[i], 3.5, Color(0.6, 1.0, 1.0, 0.9 * fade))
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+	# Shield reboot nova: cyan shock ring
+	if nova_time > 0.0:
+		draw_set_transform(Vector2.ZERO, -rotation, Vector2.ONE)
+		var nk = 1.0 - nova_time / 0.45
+		draw_arc(Vector2.ZERO, REBOOT_RADIUS * nk, 0.0, TAU, 48, Color(CyberPalette.CYAN, 1.0 - nk), 4.0)
+		draw_circle(Vector2.ZERO, REBOOT_RADIUS * nk, Color(CyberPalette.CYAN, 0.12 * (1.0 - nk)))
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+	# Stasis: yellow time-stop wave, then a slow dashed rim while it lasts
+	if stasis_time > 0.0:
+		draw_set_transform(Vector2.ZERO, -rotation, Vector2.ONE)
+		var wave = minf(stasis_ring / 0.35, 1.0)
+		if wave < 1.0:
+			draw_arc(Vector2.ZERO, 900.0 * wave, 0.0, TAU, 64, Color(CyberPalette.YELLOW, 0.6 * (1.0 - wave)), 6.0)
+		var segs = 24
+		for i in range(segs):
+			if i % 2 == 0:
+				var sa = TAU * i / segs
+				draw_arc(Vector2.ZERO, 46.0, sa, sa + TAU / segs, 3, Color(CyberPalette.YELLOW, 0.7), 2.0)
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+	# Jammed by a JAMMER champion: magenta static around the hull
+	if jam_timer > 0.0:
+		draw_set_transform(Vector2.ZERO, -rotation, Vector2.ONE)
+		for i in range(10):
+			if randf() < 0.5:
+				var ja = randf() * TAU
+				draw_arc(Vector2.ZERO, 30.0 + randf_range(-3.0, 3.0), ja, ja + 0.35, 4, Color(0.92, 0.25, 1.0, 0.8), 2.0)
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
 	# 2. Side Hull Breach Sparks
 	for s in damage_sparks:
 		if s["life"] > 0.0:
@@ -205,8 +288,18 @@ func apply_upgrades() -> void:
 	var repair_lvl = GameManager.get_skill_level("repair")
 	hp_regen_rate = repair_lvl * 2.2
 	if GameManager.is_synergy_active("nanite_bastion"):
-		hp_regen_rate += 8.0 # Bastion triple healing
+		hp_regen_rate *= 3.0 # Bastion triple healing
 		
+	# 3b. Time dilation: needs both Overclock basics; 60% slow once both reach level 3
+	var spd_lvl = GameManager.get_skill_level("speed")
+	var cd_skill = GameManager.get_skill_level("cooldown")
+	if spd_lvl > 0 and cd_skill > 0:
+		dilation_radius = DILATION_RADIUS
+		dilation_slow = 0.6 if mini(spd_lvl, cd_skill) >= 3 else 0.5
+	else:
+		dilation_radius = 0.0
+		dilation_slow = 0.0
+
 	# 4. Magnet Radius
 	var magnet_lvl = GameManager.get_skill_level("magnet")
 	var meta_mag_mult = 1.0 + GameManager.get_meta_upgrade_level("magnet") * 0.15
@@ -237,6 +330,9 @@ func update_orbital_drones() -> void:
 		var init_angle = (TAU / drone_count) * i
 		d.setup(self, init_angle, is_bastion)
 		d.damage_mult = GameManager.doctrine_mod("dmg")
+		# Per level after the first: +20% orbit radius and speed
+		d.orbit_radius *= 1.0 + 0.2 * (drone_lvl - 1)
+		d.orbit_speed *= 1.0 + 0.2 * (drone_lvl - 1)
 		get_parent().call_deferred("add_child", d)
 		spawned_drones.append(d)
 
@@ -245,6 +341,8 @@ func _physics_process(delta: float) -> void:
 		return
 		
 	handle_movement(delta)
+	handle_aegis(delta)
+	_tick_tier5_timers(delta)
 	handle_shield_recharge(delta)
 	handle_regen(delta)
 	handle_weapons(delta)
@@ -312,7 +410,11 @@ func handle_movement(delta: float) -> void:
 	if is_dashing:
 		dash_time_left -= delta
 		velocity = dash_dir * (move_speed * 3.3)
+		var dash_from := global_position
 		move_and_slide()
+		# Vacuum trail (Overclock): the dash lane swallows hostile shots
+		if GameManager.get_skill_level("speed") > 0:
+			EnemyShots.clear_segment(dash_from, global_position, DASH_TRAIL_WIDTH, CyberPalette.YELLOW)
 		if sprite:
 			sprite.modulate = Color(0.4, 1.8, 3.0, 0.75)
 		afterimage_spawn_timer -= delta
@@ -326,12 +428,30 @@ func handle_movement(delta: float) -> void:
 	else:
 		velocity = input_vec * move_speed
 		move_and_slide()
+		_push_out_of_swarm()
 	
 	is_thrusting = (input_vec.length() > 0.05) or is_dashing
 	queue_redraw()
 	
 	if input_vec.length() > 0.05:
 		rotation = lerp_angle(rotation, input_vec.angle() + PI / 2.0, 12.0 * delta)
+
+# Swarm units have no physics bodies, so the ship is eased out of them instead of
+# hard-blocked: pushing into the horde slows it down. Dash (phase shift) passes through.
+const PUSH_RADIUS := 20.0
+const PUSH_STRENGTH := 0.35
+const MAX_PUSH := 8.0
+
+func _push_out_of_swarm() -> void:
+	var push := Vector2.ZERO
+	for e in EnemyRegistry.overlapping(global_position, PUSH_RADIUS):
+		if not e is EnemyBase:
+			continue
+		var d: Vector2 = global_position - e.global_position
+		var dist := maxf(d.length(), 0.01)
+		push += d / dist * (PUSH_RADIUS + e.hit_radius - dist)
+	if push != Vector2.ZERO:
+		global_position += (push * PUSH_STRENGTH).limit_length(MAX_PUSH)
 
 func start_dash(input_vec: Vector2) -> void:
 	is_dashing = true
@@ -359,7 +479,7 @@ func start_dash(input_vec: Vector2) -> void:
 		if e.has_method("apply_slow"):
 			e.apply_slow(0.9, 0.35)
 		if e.has_method("take_damage"):
-			e.take_damage(30.0 * GameManager.doctrine_mod("dmg"))
+			e.take_damage(30.0 * weapon_mult())
 
 func spawn_afterimage() -> void:
 	afterimages.append({
@@ -367,6 +487,64 @@ func spawn_afterimage() -> void:
 		"rot": rotation,
 		"alpha": 0.8
 	})
+
+func _tick_tier5_timers(delta: float) -> void:
+	reboot_cd = maxf(0.0, reboot_cd - delta)
+	nova_time = maxf(0.0, nova_time - delta)
+	if stasis_time > 0.0:
+		stasis_time -= delta
+		stasis_ring += delta
+
+func has_aegis() -> bool:
+	return GameManager.active_doctrine == SkillData.Branch.DEFENSE
+
+func handle_aegis(delta: float) -> void:
+	if not has_aegis():
+		aegis_time = 0.0
+		return
+	aegis_cd -= delta
+	if aegis_cd <= 0.0:
+		raise_aegis()
+	if aegis_time > 0.0:
+		aegis_time -= delta
+		EnemyShots.clear_radius(global_position, AEGIS_RADIUS, CyberPalette.CYAN)
+
+func raise_aegis() -> void:
+	aegis_time = AEGIS_TIME
+	aegis_cd = AEGIS_PERIOD
+	AudioManager.play_sfx("shield_hit", 0.05, 2.0)
+
+# Speed multiplier for a hostile shot at `pos` (1.0 outside the field)
+func dilation_factor(pos: Vector2) -> float:
+	# Stasis (OVC-05) freezes every hostile shot, wherever it is
+	if stasis_time > 0.0:
+		return 0.0
+	if dilation_radius > 0.0 and global_position.distance_squared_to(pos) <= dilation_radius * dilation_radius:
+		return 1.0 - dilation_slow
+	return 1.0
+
+# Data Spike: chance to hijack an incoming shot, 20% at level 1 to 40% at level 4
+func hack_chance() -> float:
+	var lvl = GameManager.get_skill_level("data_spike")
+	return 0.0 if lvl <= 0 else 0.2 + (lvl - 1) * (0.2 / 3.0)
+
+# Deflector: while the shield holds, 35% (level 1) to 60% (level 5) of shots bounce back
+func deflect_chance() -> float:
+	var lvl = GameManager.get_skill_level("shield")
+	return 0.0 if lvl <= 0 else 0.35 + (lvl - 1) * 0.0625
+
+# An enemy shot reached the hull. The shot pops afterwards unless it was turned.
+func take_laser_hit(laser: Node) -> void:
+	if is_dashing:
+		return
+	if aegis_time > 0.0:
+		laser.pop(CyberPalette.CYAN)
+		return
+	if current_shield > 0.0 and randf() < deflect_chance():
+		laser.reflect()
+		AudioManager.play_sfx("shield_hit", 0.15, -2.0)
+		return
+	take_damage(laser.damage, laser.global_position)
 
 func handle_shield_recharge(delta: float) -> void:
 	if max_shield <= 0.0:
@@ -384,11 +562,31 @@ func handle_shield_recharge(delta: float) -> void:
 		shield_fx.queue_redraw()
 
 func handle_regen(delta: float) -> void:
-	if hp_regen_rate > 0.0 and current_hp < max_hp:
-		current_hp = min(max_hp, current_hp + hp_regen_rate * delta)
+	var rate = hp_regen_rate + dome_heal_rate()
+	if rate > 0.0 and current_hp < max_hp:
+		current_hp = min(max_hp, current_hp + rate * delta)
 		GameManager.player_damaged.emit(current_hp, max_hp, current_shield, max_shield)
 
+# Doctrine and time scaling for ship weapons
+func weapon_mult() -> float:
+	return GameManager.doctrine_mod("dmg") * GameManager.damage_scale()
+
+# JAMMER champion field: weapon cooldowns tick at half speed while jammed
+const JAM_RATE := 0.5
+var jam_timer: float = 0.0
+
+func jam(duration: float) -> void:
+	if jam_timer <= 0.0:
+		var ft = preload("res://scenes/effects/floating_text.tscn").instantiate()
+		ft.global_position = global_position + Vector2(0, -36)
+		get_parent().add_child(ft)
+		ft.setup("СИСТЕМИ ЗАГЛУШЕНО", Color(0.92, 0.25, 1.0), 1.1)
+	jam_timer = maxf(jam_timer, duration)
+
 func handle_weapons(delta: float) -> void:
+	if jam_timer > 0.0:
+		jam_timer -= delta
+		delta *= JAM_RATE
 	var cd_lvl = GameManager.get_skill_level("cooldown")
 	var cd_mult = pow(0.88, cd_lvl)
 	# Doctrine fire-rate change hits ship weapons only, not turrets and mines
@@ -447,7 +645,28 @@ func handle_weapons(delta: float) -> void:
 			glitch_timer = 0.25
 			pulse_glitch_field(glitch_lvl)
 
-	# 6. Engineer branch
+	# 6. Tier-5 skills
+	var strike_lvl = GameManager.get_skill_level("orbital_strike")
+	if strike_lvl > 0:
+		strike_timer -= delta
+		if strike_timer <= 0.0:
+			strike_timer = (7.0 - (strike_lvl - 1)) * ship_cd
+			fire_orbital_strike(strike_lvl)
+
+	var stasis_lvl = GameManager.get_skill_level("stasis")
+	if stasis_lvl > 0:
+		stasis_cd -= delta
+		if stasis_cd <= 0.0:
+			stasis_cd = 22.0 - 3.0 * (stasis_lvl - 1)
+			trigger_stasis(stasis_lvl)
+
+	var mind_lvl = GameManager.get_skill_level("mind_control")
+	if mind_lvl > 0:
+		mind_cd -= delta
+		if mind_cd <= 0.0 and hijack_shooter(mind_lvl):
+			mind_cd = 12.0 - 2.0 * (mind_lvl - 1)
+
+	# 7. Engineer branch
 	var turret_lvl = GameManager.get_skill_level("turret")
 	if turret_lvl > 0:
 		turret_timer -= delta
@@ -462,7 +681,7 @@ func handle_weapons(delta: float) -> void:
 			mine_timer = 2.6 * cd_mult
 			drop_mines(mines_lvl)
 
-func find_nearest_enemies(count: int = 1) -> Array[Node2D]:
+func find_nearest_enemies(count: int = 1) -> Array[Object]:
 	return EnemyRegistry.nearest(global_position, count)
 
 func fire_blaster(lvl: int) -> void:
@@ -472,7 +691,7 @@ func fire_blaster(lvl: int) -> void:
 		shoot_dir = (target[0].global_position - global_position).normalized()
 		
 	var bolt_scene = preload("res://scenes/weapons/blaster_bolt.tscn")
-	var damage = (22.0 + lvl * 6.0) * GameManager.doctrine_mod("dmg")
+	var damage = (22.0 + lvl * 6.0) * weapon_mult()
 	var is_storm = GameManager.is_synergy_active("plasma_storm")
 	var conductor_lvl = GameManager.get_skill_level("conductor")
 	var can_chain = is_storm or conductor_lvl > 0
@@ -510,10 +729,15 @@ func fire_blaster(lvl: int) -> void:
 
 func fire_missiles(lvl: int) -> void:
 	var targets = find_nearest_enemies(lvl + 1)
+	# Sniper targeting: the first missile goes for a shooter that is aiming
+	var sniper = FireDirector.nearest_aiming(global_position, 700.0)
+	if sniper:
+		targets.erase(sniper)
+		targets.push_front(sniper)
 	var is_valkyrie = GameManager.is_synergy_active("valkyrie_swarm")
 	var missile_scene = preload("res://scenes/weapons/missile.tscn")
 	var count = lvl + 1
-	var damage = (45.0 + lvl * 15.0) * GameManager.doctrine_mod("dmg")
+	var damage = (45.0 + lvl * 15.0) * weapon_mult()
 	var fwd = Vector2.UP.rotated(rotation)
 	
 	for i in range(count):
@@ -536,6 +760,10 @@ func fire_missiles(lvl: int) -> void:
 
 func fire_railgun(lvl: int) -> void:
 	var target = find_nearest_enemies(1)
+	# Sniper targeting: an aiming shooter takes priority over the nearest enemy
+	var sniper = FireDirector.nearest_aiming(global_position, 900.0)
+	if sniper:
+		target = [sniper]
 	var dir = Vector2.UP.rotated(rotation)
 	if target.size() > 0:
 		dir = (target[0].global_position - global_position).normalized()
@@ -543,7 +771,7 @@ func fire_railgun(lvl: int) -> void:
 	var nose_emitter = global_position + Vector2(0, -24).rotated(rotation)
 	var rail_scene = preload("res://scenes/weapons/railgun_beam.tscn")
 	var rail = rail_scene.instantiate()
-	var dmg = (120.0 + lvl * 45.0) * GameManager.doctrine_mod("dmg")
+	var dmg = (120.0 + lvl * 45.0) * weapon_mult()
 	# setup() before add_child(): _ready() fires the beam, so it needs position and direction first
 	rail.setup(nose_emitter, dir, dmg)
 	get_parent().add_child(rail)
@@ -553,7 +781,7 @@ func fire_emp(lvl: int, force_apocalypse: bool = false) -> void:
 	var emp_scene = preload("res://scenes/weapons/emp_wave.tscn")
 	var emp = emp_scene.instantiate()
 	var rad = 220.0 + lvl * 40.0
-	var dmg = (50.0 + lvl * 20.0) * GameManager.doctrine_mod("dmg")
+	var dmg = (50.0 + lvl * 20.0) * weapon_mult()
 	var stun = 2.0 + lvl * 0.5
 	emp.setup(global_position, rad, dmg, stun, is_apocalypse)
 	get_parent().add_child(emp)
@@ -565,7 +793,7 @@ func fire_emp(lvl: int, force_apocalypse: bool = false) -> void:
 				e.infect(5.0, vdps)
 
 func virus_dps(lvl: int) -> float:
-	return (5.0 + 4.0 * lvl) * (1.0 + 0.25 * (lvl - 1)) * (1.0 + GameManager.time_survived / 120.0) * GameManager.doctrine_mod("dot")
+	return (5.0 + 4.0 * lvl) * (1.0 + 0.25 * (lvl - 1)) * GameManager.damage_scale() * GameManager.doctrine_mod("dot")
 
 func fire_virus(lvl: int) -> void:
 	var dps = virus_dps(lvl)
@@ -576,7 +804,7 @@ func fire_virus(lvl: int) -> void:
 
 func pulse_glitch_field(lvl: int) -> void:
 	var mult = 0.75 - 0.1 * (lvl - 1)
-	var dmg = (3.0 + 3.0 * lvl) * (1.0 + GameManager.time_survived / 150.0) * GameManager.doctrine_mod("dot")
+	var dmg = (3.0 + 3.0 * lvl) * GameManager.damage_scale() * GameManager.doctrine_mod("dot")
 	for e in EnemyRegistry.in_radius(global_position, glitch_radius):
 		if e.has_method("apply_slow"):
 			e.apply_slow(0.35, mult)
@@ -587,7 +815,7 @@ func deploy_turret(lvl: int) -> void:
 	if spawned_turrets.size() >= lvl + int(GameManager.doctrine_mod("turret_extra", 0.0)):
 		return
 	var turret = preload("res://scenes/weapons/sentry_turret.tscn").instantiate()
-	var dmg = (14.0 + 4.0 * lvl) * GameManager.doctrine_mod("turret_dmg")
+	var dmg = (14.0 + 4.0 * lvl) * GameManager.doctrine_mod("turret_dmg") * GameManager.damage_scale()
 	var life = (12.0 + 2.0 * lvl) * GameManager.doctrine_mod("turret_life")
 	turret.setup(global_position, dmg, life, GameManager.get_skill_level("tesla"), GameManager.get_skill_level("missile_battery"), GameManager.is_synergy_active("fortress"))
 	get_parent().add_child(turret)
@@ -598,7 +826,7 @@ func drop_mines(lvl: int) -> void:
 	if count <= 0:
 		return
 	var emp = GameManager.is_synergy_active("emp_mines")
-	var dmg = 40.0 * (1.0 + 0.25 * (lvl - 1)) * GameManager.doctrine_mod("turret_dmg")
+	var dmg = 40.0 * (1.0 + 0.25 * (lvl - 1)) * GameManager.doctrine_mod("turret_dmg") * GameManager.damage_scale()
 	var radius = 75.0 * (1.4 if emp else 1.0)
 	var mine_scene = preload("res://scenes/weapons/proximity_mine.tscn")
 	# Drop from the stern, spread sideways
@@ -608,6 +836,74 @@ func drop_mines(lvl: int) -> void:
 		var mine = mine_scene.instantiate()
 		mine.setup(global_position + back + side * (i - (count - 1) / 2.0) * 26.0, dmg, radius, 1.5 if emp else 0.0)
 		get_parent().add_child(mine)
+
+# WPN-05: hits a shooter that is aiming, else the densest cluster nearby
+func fire_orbital_strike(lvl: int) -> void:
+	var radius = 130.0 + 20.0 * (lvl - 1)
+	var target = FireDirector.nearest_aiming(global_position, STRIKE_SEARCH)
+	if target == null:
+		var best_n := 0
+		for c in EnemyRegistry.nearest(global_position, 8, STRIKE_SEARCH):
+			var n := EnemyRegistry.in_radius(c.global_position, radius).size()
+			if n > best_n:
+				best_n = n
+				target = c
+	if target == null:
+		strike_timer = 0.5
+		return
+	var strike = preload("res://scenes/weapons/orbital_strike.gd").new()
+	strike.setup(target.global_position, radius, (150.0 + 75.0 * (lvl - 1)) * weapon_mult())
+	get_parent().add_child(strike)
+
+# DEF-05: when the shield breaks, a nova clears the area and the shield comes back at 50%
+func _on_shield_break() -> void:
+	var lvl = GameManager.get_skill_level("shield_reboot")
+	if lvl <= 0 or reboot_cd > 0.0:
+		return
+	reboot_cd = 20.0 - 4.0 * (lvl - 1)
+	nova_time = 0.45
+	var dmg = (40.0 + 30.0 * lvl) * weapon_mult()
+	for e in EnemyRegistry.in_radius(global_position, REBOOT_RADIUS):
+		e.take_damage(dmg, (e.global_position - global_position).normalized() * 2.0)
+	EnemyShots.clear_radius(global_position, REBOOT_RADIUS, CyberPalette.CYAN)
+	current_shield = max_shield * 0.5
+	AudioManager.play_sfx("emp_blast", 0.05, -2.0)
+
+# OVC-05: stuns everything nearby and freezes hostile shots
+func trigger_stasis(lvl: int) -> void:
+	var dur = 1.5 + 0.5 * (lvl - 1)
+	stasis_time = dur
+	stasis_ring = 0.0
+	for e in EnemyRegistry.in_radius(global_position, STASIS_RANGE):
+		e.apply_stun(dur)
+	AudioManager.play_sfx("emp_blast", 0.02, 1.0)
+	var ft = preload("res://scenes/effects/floating_text.tscn").instantiate()
+	ft.global_position = global_position + Vector2(0, -40)
+	get_parent().add_child(ft)
+	ft.setup("СТОП-КАДР", CyberPalette.YELLOW, 1.4)
+
+# HCK-05: turns the nearest shooter (aiming ones first); false when none in range
+func hijack_shooter(lvl: int) -> bool:
+	var target = FireDirector.nearest_aiming(global_position, MIND_RANGE)
+	if target == null:
+		for e in EnemyRegistry.nearest(global_position, 12, MIND_RANGE):
+			if e is EnemyBase and e.kind in SHOOTER_KINDS and e.hijack_time <= 0.0:
+				target = e
+				break
+	if target == null or not target is EnemyBase:
+		return false
+	target.hijack(4.0 + 2.0 * (lvl - 1))
+	return true
+
+# ENG-05: repair while inside any turret dome
+func dome_heal_rate() -> float:
+	var lvl = GameManager.get_skill_level("dome")
+	if lvl <= 0:
+		return 0.0
+	return 3.0 + 2.0 * (lvl - 1) if near_turret(dome_radius()) else 0.0
+
+static func dome_radius() -> float:
+	return 110.0 + 20.0 * (GameManager.get_skill_level("dome") - 1)
 
 func near_turret(radius: float) -> bool:
 	for t in spawned_turrets:
@@ -646,10 +942,15 @@ func take_damage(amount: float, source_pos: Vector2 = Vector2.ZERO) -> void:
 			actual_damage -= current_shield
 			current_shield = 0.0
 			AudioManager.play_sfx("shield_hit", 0.1, 2.0)
+			_on_shield_break()
 			# EMP Apocalypse triggers on shield break!
 			if GameManager.is_synergy_active("emp_apocalypse"):
 				fire_emp(GameManager.get_skill_level("emp"), true)
 				
+	# Tank doctrine: a heavy single hit raises the dome early (at most every 5 s)
+	if has_aegis() and actual_damage >= max_hp * AEGIS_HEAVY_HIT and aegis_time <= 0.0 and aegis_cd <= AEGIS_PERIOD - 5.0:
+		raise_aegis()
+
 	if actual_damage > 0.0:
 		current_hp -= actual_damage
 		if show_fx:

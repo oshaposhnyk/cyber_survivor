@@ -7,12 +7,16 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/hud.tscn" id="5_hud"]
 [ext_resource type="PackedScene" path="res://scenes/ui/skill_tree.tscn" id="6_skill_tree"]
 [ext_resource type="PackedScene" path="res://scenes/ui/game_over.tscn" id="7_game_over"]
+[ext_resource type="Script" path="res://scripts/systems/swarm.gd" id="8_swarm"]
 
 [node name="Main" type="Node2D"]
 script = ExtResource("1_script")
 
 [node name="SpaceGrid" type="Node2D" parent="."]
 script = ExtResource("2_space_grid")
+
+[node name="Swarm" type="Node2D" parent="."]
+script = ExtResource("8_swarm")
 
 [node name="Player" parent="." instance=ExtResource("3_player")]
 

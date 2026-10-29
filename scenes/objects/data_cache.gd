@@ -10,6 +10,11 @@ var current_progress: float = 0.0
 var is_player_inside: bool = false
 var pulse_time: float = 0.0
 var spawn_guard_timer: float = 2.0
+# An unclaimed cache expires, so wave_manager (max 1) can drop the next one.
+# It stays while the player is capturing it.
+const LIFETIME := 75.0
+const DESPAWN_DIST := 2400.0
+var age: float = 0.0
 
 @onready var sprite: Sprite2D = $Sprite2D
 
@@ -18,10 +23,14 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	pulse_time += delta * 4.0
+	age += delta
 	var player = GameManager.player_node
 	if is_instance_valid(player):
 		var dist = global_position.distance_to(player.global_position)
 		is_player_inside = dist <= capture_radius
+		if dist > DESPAWN_DIST or (age > LIFETIME and current_progress <= 0.0):
+			queue_free()
+			return
 	else:
 		is_player_inside = false
 		

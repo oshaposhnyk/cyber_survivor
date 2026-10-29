@@ -25,6 +25,10 @@ func _process(delta: float) -> void:
 	# Camera follow player
 	if is_instance_valid(player):
 		camera.global_position = camera.global_position.lerp(player.global_position, 10.0 * delta)
+
+	# View rectangle for enemy LOD; margin keeps sprites at the edge at full rate
+	EnemyBase.view_center = camera.get_screen_center_position()
+	EnemyBase.view_half = get_viewport_rect().size * 0.5 / camera.zoom + Vector2(120.0, 120.0)
 		
 	# Screen shake
 	if shake_amount > 0.0:
