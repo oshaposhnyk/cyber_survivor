@@ -10,68 +10,74 @@ var current_wave_idx: int = 1
 var elapsed: float = 0.0
 
 # Special ambush wave timer
-var ambush_timer: float = 20.0
+var ambush_timer: float = 45.0
 var mech_boss_timer: float = 40.0
 var boss_spawned: bool = false
 
-# Maximum active concurrent enemies to ensure stable 60 FPS even during massive hordes
-const MAX_CONCURRENT_ENEMIES: int = 1600
+# Hard cap on live enemies (performance, especially in the web build)
+const MAX_CONCURRENT_ENEMIES: int = 1100
+# Spawn ring just outside the visible area (viewport 1280x720 at camera zoom 0.72)
+const SPAWN_DIST_MIN: float = 1050.0
+const SPAWN_DIST_MAX: float = 1200.0
+const BOSS_TIME: float = 150.0
+
+# Vampire-Survivors-style pacing: the director keeps at least `min_alive` enemies
+# on the field and tops up when below it. Values are interpolated between keys,
+# so pressure grows smoothly instead of in jumps.
+const PACING = [
+	{"t": 0.0,   "min_alive": 15,   "interval": 0.9},
+	{"t": 30.0,  "min_alive": 40,   "interval": 0.75},
+	{"t": 60.0,  "min_alive": 70,   "interval": 0.6},
+	{"t": 120.0, "min_alive": 130,  "interval": 0.5},
+	{"t": 180.0, "min_alive": 200,  "interval": 0.42},
+	{"t": 240.0, "min_alive": 300,  "interval": 0.35},
+	# Final stretch: hordes, like the last minutes of a Vampire Survivors stage
+	{"t": 300.0, "min_alive": 450,  "interval": 0.28},
+	{"t": 360.0, "min_alive": 700,  "interval": 0.2},
+	{"t": 400.0, "min_alive": 950,  "interval": 0.15},
+	{"t": 420.0, "min_alive": 1100, "interval": 0.12},
+]
 
 const WAVES = [
 	{
 		"index": 1,
-		"name": "Сектор 1: Дронова Зачистка",
-		"desc": "Скупчення розвідувальних дронів. Збирайте нанітний брухт та прокачуйте системи!",
+		"name": "Сектор 1: Розвідка",
+		"desc": "Поодинокі дрони-розвідники. Збирайте брухт і прокачуйте корабель.",
 		"start_time": 0.0,
-		"interval": 0.6,
-		"batch_min": 6,
-		"batch_max": 10,
 		"types": ["drone"],
 		"weights": [1.0]
 	},
 	{
 		"index": 2,
 		"name": "Сектор 2: Павутинний Прорив",
-		"desc": "Швидкісні боти-павуки проривають периметр! Збільшена щільність ворогів.",
-		"start_time": 60.0,
-		"interval": 0.45,
-		"batch_min": 14,
-		"batch_max": 24,
+		"desc": "Швидкі боти-павуки заходять з флангів.",
+		"start_time": 45.0,
 		"types": ["drone", "spider"],
-		"weights": [0.55, 0.45]
+		"weights": [0.65, 0.35]
 	},
 	{
 		"index": 3,
 		"name": "Сектор 3: Штурмовий Натиск",
-		"desc": "Увага! Штурмові андроїди відкрили лазерний вогонь. Дрони-камікадзе наближаються!",
-		"start_time": 150.0,
-		"interval": 0.35,
-		"batch_min": 25,
-		"batch_max": 45,
-		"types": ["drone", "spider", "assault", "kamikaze"],
-		"weights": [0.35, 0.35, 0.15, 0.15]
+		"desc": "Штурмові дроїди ведуть лазерний вогонь. Щитоносці прикривають рій куполом.",
+		"start_time": 120.0,
+		"types": ["drone", "spider", "assault", "kamikaze", "shield"],
+		"weights": [0.38, 0.34, 0.13, 0.11, 0.04]
 	},
 	{
 		"index": 4,
-		"name": "Сектор 4: Протокол Меха-Титан",
-		"desc": "ТРИВОГА! Зафіксовано важких бойових мехів-титанів на підході!",
-		"start_time": 240.0,
-		"interval": 0.30,
-		"batch_min": 40,
-		"batch_max": 70,
-		"types": ["drone", "spider", "assault", "kamikaze"],
-		"weights": [0.3, 0.3, 0.2, 0.2]
+		"name": "Сектор 4: Меха-Титани",
+		"desc": "Важкі бойові мехи на підході.",
+		"start_time": 210.0,
+		"types": ["drone", "spider", "assault", "kamikaze", "shield"],
+		"weights": [0.28, 0.29, 0.19, 0.19, 0.05]
 	},
 	{
 		"index": 5,
-		"name": "Сектор 5: Нульовий Протокол - ТИСЯЧНИЙ ОВЕРДРАЙВ",
-		"desc": "МАКСИМАЛЬНА ЗАГРОЗА! Нескінченні армади бойових автоматонів!",
-		"start_time": 300.0, # 5 хвилин
-		"interval": 0.22,
-		"batch_min": 60,
-		"batch_max": 110,
-		"types": ["drone", "spider", "assault", "kamikaze", "mech"],
-		"weights": [0.35, 0.30, 0.18, 0.15, 0.02]
+		"name": "Сектор 5: Нульовий Протокол",
+		"desc": "Максимальна загроза. Протримайтеся до евакуації.",
+		"start_time": 300.0,
+		"types": ["drone", "spider", "assault", "kamikaze", "shield", "mech"],
+		"weights": [0.31, 0.29, 0.17, 0.16, 0.04, 0.03]
 	}
 ]
 
@@ -80,7 +86,8 @@ var enemy_scenes = {
 	"spider": preload("res://scenes/enemies/spider_bot.tscn"),
 	"assault": preload("res://scenes/enemies/assault_droid.tscn"),
 	"kamikaze": preload("res://scenes/enemies/kamikaze.tscn"),
-	"mech": preload("res://scenes/enemies/mech_walker.tscn")
+	"mech": preload("res://scenes/enemies/mech_walker.tscn"),
+	"shield": preload("res://scenes/enemies/shield_bearer.tscn")
 }
 
 func setup(p_main: Node2D) -> void:
@@ -94,28 +101,42 @@ func _process(delta: float) -> void:
 	check_wave_progression()
 	
 	spawn_timer -= delta
-	var current_cfg = get_current_wave_config()
 	if spawn_timer <= 0.0:
-		spawn_timer = current_cfg["interval"]
-		spawn_enemy_wave(current_cfg)
+		var pace = get_pacing()
+		spawn_timer = pace["interval"]
+		spawn_enemy_wave(get_current_wave_config(), int(pace["min_alive"]))
 		
-	# Dreadnought Titan Boss event at 2:00 (120s)
-	if elapsed >= 120.0 and not boss_spawned:
+	# Dreadnought Titan Boss event
+	if elapsed >= BOSS_TIME and not boss_spawned:
 		boss_spawned = true
 		spawn_dreadnought_boss()
 		
 	# Periodic Ambush Circle Swarms
 	ambush_timer -= delta
 	if ambush_timer <= 0.0:
-		ambush_timer = randf_range(22.0, 32.0)
+		ambush_timer = randf_range(40.0, 50.0) if elapsed < 300.0 else randf_range(18.0, 24.0)
 		trigger_ambush_ring()
 		
 	# Periodic Mech Titans in late sectors
 	if current_wave_idx >= 4:
 		mech_boss_timer -= delta
 		if mech_boss_timer <= 0.0:
-			mech_boss_timer = 35.0
+			mech_boss_timer = 35.0 if elapsed < 330.0 else 14.0
 			spawn_specific_enemy("mech", 1)
+
+func get_pacing() -> Dictionary:
+	var prev = PACING[0]
+	for key in PACING:
+		if elapsed < key["t"]:
+			var k = (elapsed - prev["t"]) / max(key["t"] - prev["t"], 0.001)
+			return {"min_alive": lerpf(prev["min_alive"], key["min_alive"], k), "interval": lerpf(prev["interval"], key["interval"], k)}
+		prev = key
+	return prev
+
+# Enemy toughness grows with time so the swarm keeps pace with the player's upgrades
+func get_hp_mult() -> float:
+	var late = max(0.0, elapsed - 240.0) / 60.0
+	return 1.0 + elapsed / 60.0 * 0.35 + min(late * late * 0.7, 3.5)
 
 func get_current_wave_config() -> Dictionary:
 	var active_cfg = WAVES[0]
@@ -140,21 +161,20 @@ func check_wave_progression() -> void:
 	if elapsed >= 420.0 and GameManager.current_state == GameManager.State.PLAYING:
 		GameManager.trigger_game_over(true)
 
-func spawn_enemy_wave(cfg: Dictionary) -> void:
+func spawn_enemy_wave(cfg: Dictionary, min_alive: int) -> void:
 	if not is_instance_valid(GameManager.player_node):
 		return
 		
-	var active_count = get_tree().get_nodes_in_group("enemies").size()
+	var active_count = EnemyRegistry.count()
 	if active_count >= MAX_CONCURRENT_ENEMIES:
 		return
-		
-	var batch_count = randi_range(cfg["batch_min"], cfg["batch_max"])
+	
+	# Below the target: top up quickly (capped per tick). At or above: steady trickle.
+	var deficit = min_alive - active_count
+	var batch_count = clampi(deficit, 0, 8 + current_wave_idx * 8) if deficit > 0 else 1 + int(elapsed / 120.0)
+	batch_count = min(batch_count, MAX_CONCURRENT_ENEMIES - active_count)
 	var types: Array = cfg["types"]
 	var weights: Array = cfg["weights"]
-	
-	# Spawn a cluster of enemies from an incoming vector
-	var base_angle = randf() * TAU
-	var base_dist = randf_range(850.0, 1050.0)
 	var player_pos = GameManager.player_node.global_position
 	
 	for i in range(batch_count):
@@ -167,46 +187,37 @@ func spawn_enemy_wave(cfg: Dictionary) -> void:
 			if roll <= accum:
 				chosen_type = types[w_idx]
 				break
-				
-		var scene: PackedScene = enemy_scenes[chosen_type]
-		var enemy = scene.instantiate()
 		
-		# Cluster around the incoming vector with dispersion
-		var offset = Vector2(randf_range(-140, 140), randf_range(-140, 140))
-		var angle = base_angle + randf_range(-0.4, 0.4)
-		var spawn_pos = player_pos + Vector2(cos(angle), sin(angle)) * base_dist + offset
-		enemy.global_position = spawn_pos
-		
-		main_scene.add_child(enemy)
+		# Spread around the whole screen edge, like Vampire Survivors
+		var angle = randf() * TAU
+		spawn_at(chosen_type, player_pos + Vector2(cos(angle), sin(angle)) * randf_range(SPAWN_DIST_MIN, SPAWN_DIST_MAX))
+
+func spawn_at(type_key: String, pos: Vector2) -> void:
+	var enemy = enemy_scenes[type_key].instantiate()
+	enemy.global_position = pos
+	enemy.max_health *= get_hp_mult()
+	enemy.contact_damage *= 1.0 + elapsed / 60.0 * 0.12
+	main_scene.add_child(enemy)
 
 func trigger_ambush_ring() -> void:
 	if not is_instance_valid(GameManager.player_node):
 		return
 	var player_pos = GameManager.player_node.global_position
-	var ring_count = 35 + current_wave_idx * 15
-	var enemy_type = "spider" if current_wave_idx <= 2 else ("kamikaze" if randf() < 0.35 else "drone")
-	var scene: PackedScene = enemy_scenes[enemy_type]
+	var ring_count = min(24 + current_wave_idx * 14 + int(max(0.0, elapsed - 240.0) * 0.8), MAX_CONCURRENT_ENEMIES - EnemyRegistry.count())
+	var enemy_type = "drone" if current_wave_idx <= 2 else ("kamikaze" if randf() < 0.35 else "spider")
 	
 	for i in range(ring_count):
 		var ang = (TAU / ring_count) * i
-		var dist = randf_range(900.0, 1050.0)
-		var enemy = scene.instantiate()
-		enemy.global_position = player_pos + Vector2(cos(ang), sin(ang)) * dist
-		main_scene.add_child(enemy)
+		spawn_at(enemy_type, player_pos + Vector2(cos(ang), sin(ang)) * randf_range(SPAWN_DIST_MIN, SPAWN_DIST_MAX))
 
 func spawn_specific_enemy(type_key: String, count: int = 1) -> void:
 	if not enemy_scenes.has(type_key) or not is_instance_valid(GameManager.player_node):
 		return
 		
-	var scene: PackedScene = enemy_scenes[type_key]
 	var player_pos = GameManager.player_node.global_position
-	
 	for i in range(count):
-		var enemy = scene.instantiate()
 		var angle = randf() * TAU
-		var dist = randf_range(900.0, 1050.0)
-		enemy.global_position = player_pos + Vector2(cos(angle), sin(angle)) * dist
-		main_scene.add_child(enemy)
+		spawn_at(type_key, player_pos + Vector2(cos(angle), sin(angle)) * randf_range(SPAWN_DIST_MIN, SPAWN_DIST_MAX))
 
 func spawn_dreadnought_boss() -> void:
 	if not is_instance_valid(GameManager.player_node) or not is_instance_valid(main_scene):
@@ -222,4 +233,4 @@ func spawn_dreadnought_boss() -> void:
 	
 	var hud = get_tree().get_first_node_in_group("hud")
 	if hud and hud.has_method("show_announcement"):
-		hud.show_announcement("⚠️ ЧЕРВОНИЙ РІВЕНЬ ЗАГРОЗИ! ⚠️", "ВИЯВЛЕНО ОМЕГА-ДРЕДНОУТ «LEVIATHAN-01»")
+		hud.show_announcement("ЧЕРВОНИЙ РІВЕНЬ ЗАГРОЗИ", "Виявлено дредноут «LEVIATHAN-01»")

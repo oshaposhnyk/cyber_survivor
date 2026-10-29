@@ -1,37 +1,51 @@
 extends CanvasLayer
 
-# Advanced Cyberpunk Progression Tree (Neural Tech Matrix)
-# Features:
-# - PCB Circuit Conduit wiring with animated flowing energy pulses
-# - Cyber-Chip styled skill node cards with Kenney sci-fi panels & icons
-# - Level progress pips indicator ([■■■□□])
-# - Interactive Neural Inspector side-deck showing real-time subsystem specs
-# - Synergies Fusion Matrix with requirement link indicators
-# - Audio-reactive feedback (ui_hover, upgrade_select, level_up)
+# Upgrade matrix: icon tiles per branch, circuit wires between prerequisites,
+# and an inspector panel. Hover a tile to inspect it, click to install an upgrade.
 
-@onready var points_label: Label = $Panel/Margin/VBox/Header/PointsLabel
-@onready var wire_overlay: Control = $Panel/Margin/VBox/Body/TreeScroll/TreeBoard/WireOverlay
-@onready var offense_vbox: VBoxContainer = $Panel/Margin/VBox/Body/TreeScroll/TreeBoard/Columns/OffenseCol/NodesVBox
-@onready var defense_vbox: VBoxContainer = $Panel/Margin/VBox/Body/TreeScroll/TreeBoard/Columns/DefenseCol/NodesVBox
-@onready var overclock_vbox: VBoxContainer = $Panel/Margin/VBox/Body/TreeScroll/TreeBoard/Columns/OverclockCol/NodesVBox
-@onready var synergies_vbox: VBoxContainer = $Panel/Margin/VBox/Body/TreeScroll/TreeBoard/Columns/SynergiesCol/NodesVBox
-@onready var close_btn: Button = $Panel/Margin/VBox/Footer/CloseBtn
+var branch_columns = [
+	{"branch": SkillData.Branch.OFFENSE, "title": "ЗБРОЯ", "color": Color(1.0, 0.0, 0.235)},
+	{"branch": SkillData.Branch.DEFENSE, "title": "ЗАХИСТ", "color": Color(0.0, 0.941, 1.0)},
+	{"branch": SkillData.Branch.OVERCLOCK, "title": "РОЗГІН", "color": Color(0.988, 0.933, 0.039)},
+	{"branch": SkillData.Branch.HACK, "title": "ХАКІНГ", "color": Color(0.2, 1.0, 0.55)},
+	{"branch": SkillData.Branch.ENGINEER, "title": "ІНЖЕНЕР", "color": CyberPalette.ORANGE},
+]
+const SYNERGY_COLOR := Color(1.0, 0.3, 0.85)
 
-# Inspector Controls
-@onready var inspector_icon: TextureRect = $Panel/Margin/VBox/Body/InspectorPanel/InspectorMargin/InspectorVBox/IconHBox/InspectorIcon
-@onready var inspector_name: Label = $Panel/Margin/VBox/Body/InspectorPanel/InspectorMargin/InspectorVBox/TechName
-@onready var inspector_code: Label = $Panel/Margin/VBox/Body/InspectorPanel/InspectorMargin/InspectorVBox/TechCodeBadge
-@onready var inspector_pips: Label = $Panel/Margin/VBox/Body/InspectorPanel/InspectorMargin/InspectorVBox/TierPipsLabel
-@onready var inspector_status: Label = $Panel/Margin/VBox/Body/InspectorPanel/InspectorMargin/InspectorVBox/TechStatus
-@onready var inspector_desc: Label = $Panel/Margin/VBox/Body/InspectorPanel/InspectorMargin/InspectorVBox/TechDesc
-@onready var inspector_next: Label = $Panel/Margin/VBox/Body/InspectorPanel/InspectorMargin/InspectorVBox/TechNextBonus
-@onready var inspector_syn_hint: Label = $Panel/Margin/VBox/Body/InspectorPanel/InspectorMargin/InspectorVBox/TechSynergiesHint
-@onready var inspector_upgrade_btn: Button = $Panel/Margin/VBox/Body/InspectorPanel/InspectorMargin/InspectorVBox/UpgradeActionBtn
+@onready var points_label: Label = $Root/VBox/Header/PointsPlate/HBox/PointsLabel
+@onready var close_btn: Button = $Root/VBox/Header/CloseBtn
+@onready var wire_overlay: Control = $Root/VBox/Body/TreeBoard/WireOverlay
+@onready var columns: HBoxContainer = $Root/VBox/Body/TreeBoard/Columns
+
+# Inspector controls
+@onready var inspector_icon: TextureRect = $Root/VBox/Body/InspectorPanel/VBox/IconCenter/InspectorIcon
+@onready var inspector_name: Label = $Root/VBox/Body/InspectorPanel/VBox/TechName
+@onready var inspector_pips: Control = $Root/VBox/Body/InspectorPanel/VBox/Pips
+@onready var status_icon: TextureRect = $Root/VBox/Body/InspectorPanel/VBox/StatusRow/StatusIcon
+@onready var status_label: Label = $Root/VBox/Body/InspectorPanel/VBox/StatusRow/StatusLabel
+@onready var inspector_desc: Label = $Root/VBox/Body/InspectorPanel/VBox/TechDesc
+@onready var next_row: HBoxContainer = $Root/VBox/Body/InspectorPanel/VBox/NextRow
+@onready var inspector_next: Label = $Root/VBox/Body/InspectorPanel/VBox/NextRow/TechNext
+@onready var links_title: Label = $Root/VBox/Body/InspectorPanel/VBox/LinksTitle
+@onready var links_row: HFlowContainer = $Root/VBox/Body/InspectorPanel/VBox/LinksRow
+@onready var inspector_upgrade_btn: Button = $Root/VBox/Body/InspectorPanel/VBox/UpgradeActionBtn
+@onready var header: HBoxContainer = $Root/VBox/Header
+@onready var inspector_vbox: VBoxContainer = $Root/VBox/Body/InspectorPanel/VBox
+
+# Doctrine UI, built in code: header plate, per-column point counters, inspector block
+var doctrine_label: Label
+var doctrine_box: VBoxContainer
+var doctrine_title: Label
+var doctrine_bonus: Label
+var doctrine_malus: Label
+var column_heads: Dictionary = {}
 
 var node_cards: Dictionary = {}
 var synergy_cards: Dictionary = {}
 var selected_skill_id: String = "blaster"
 var selected_is_synergy: bool = false
+var pinned_id: String = "blaster"
+var pinned_is_synergy: bool = false
 
 # Animated circuit pulses
 var pulse_time: float = 0.0
@@ -40,16 +54,18 @@ func _ready() -> void:
 	add_to_group("skill_tree_ui")
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	visible = false
-	
+
 	close_btn.pressed.connect(close_tree)
 	close_btn.mouse_entered.connect(_on_hover_sound)
 	inspector_upgrade_btn.pressed.connect(_on_inspector_upgrade_pressed)
 	inspector_upgrade_btn.mouse_entered.connect(_on_hover_sound)
-	
+	inspector_pips.draw.connect(_on_inspector_pips_draw)
+
 	GameManager.stats_updated.connect(refresh_all)
 	wire_overlay.draw.connect(_on_wire_overlay_draw)
-	
+
 	build_ui()
+	build_doctrine_ui()
 	select_skill("blaster")
 
 func _process(delta: float) -> void:
@@ -72,206 +88,189 @@ func toggle_tree() -> void:
 
 func open_tree() -> void:
 	visible = true
+	get_tree().call_group("hud", "set_visible", false)
 	GameManager.set_state(GameManager.State.SKILL_TREE)
 	AudioManager.play_sfx("upgrade_select", 0.05, -2.0)
 	refresh_all()
 	wire_overlay.queue_redraw()
+	if node_cards.has(selected_skill_id):
+		node_cards[selected_skill_id].grab_focus()
 
 func close_tree() -> void:
 	visible = false
+	get_tree().call_group("hud", "set_visible", true)
 	GameManager.set_state(GameManager.State.PLAYING)
 
+func accent_for(skill: Dictionary) -> Color:
+	for col in branch_columns:
+		if col["branch"] == skill["branch"]:
+			return col["color"]
+	return CyberPalette.YELLOW
+
 func build_ui() -> void:
-	# 1. Build skill node cards
+	var col_boxes: Dictionary = {}
+	for col in branch_columns:
+		col_boxes[col["branch"]] = _make_column(col["title"], col["color"], false, col["branch"])
+	var syn_box = _make_column("СИНЕРГІЇ", SYNERGY_COLOR, true)
+
 	for skill_id in SkillData.SKILLS.keys():
 		var skill = SkillData.SKILLS[skill_id]
-		var card = create_skill_card(skill)
-		node_cards[skill_id] = card
-		
-		match skill["branch"]:
-			SkillData.Branch.OFFENSE:
-				offense_vbox.add_child(card)
-			SkillData.Branch.DEFENSE:
-				defense_vbox.add_child(card)
-			SkillData.Branch.OVERCLOCK:
-				overclock_vbox.add_child(card)
-				
-	# 2. Build synergy cards
-	build_synergies_cards()
-
-func create_skill_card(skill: Dictionary) -> PanelContainer:
-	var panel = PanelContainer.new()
-	panel.custom_minimum_size = Vector2(0, 102)
-	
-	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0.03, 0.07, 0.13, 0.92)
-	style.border_color = skill["icon_color"]
-	style.set_border_width_all(1)
-	style.set_corner_radius_all(6)
-	panel.add_theme_stylebox_override("panel", style)
-	
-	var margin = MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 8)
-	margin.add_theme_constant_override("margin_right", 8)
-	margin.add_theme_constant_override("margin_top", 6)
-	margin.add_theme_constant_override("margin_bottom", 6)
-	panel.add_child(margin)
-	
-	var vbox = VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 3)
-	margin.add_child(vbox)
-	
-	# Top bar: Tech Code + Level
-	var top_hbox = HBoxContainer.new()
-	
-	var code_lbl = Label.new()
-	code_lbl.text = "[%s]" % skill.get("code", "SYS")
-	code_lbl.modulate = Color(skill["icon_color"].r, skill["icon_color"].g, skill["icon_color"].b, 0.75)
-	code_lbl.add_theme_font_size_override("font_size", 9)
-	top_hbox.add_child(code_lbl)
-	
-	var lvl_lbl = Label.new()
-	lvl_lbl.name = "LevelLabel"
-	lvl_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	lvl_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	lvl_lbl.text = "v0/4"
-	lvl_lbl.modulate = Color(1.0, 0.85, 0.3)
-	lvl_lbl.add_theme_font_size_override("font_size", 10)
-	top_hbox.add_child(lvl_lbl)
-	vbox.add_child(top_hbox)
-	
-	# Mid row: Icon + Name
-	var mid_hbox = HBoxContainer.new()
-	mid_hbox.add_theme_constant_override("separation", 6)
-	
-	var icon_rect = TextureRect.new()
-	icon_rect.custom_minimum_size = Vector2(26, 26)
-	icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	var icon_p = skill.get("icon_path", "")
-	if ResourceLoader.exists(icon_p):
-		icon_rect.texture = load(icon_p)
-	icon_rect.modulate = skill["icon_color"]
-	mid_hbox.add_child(icon_rect)
-	
-	var name_lbl = Label.new()
-	name_lbl.text = skill["name"]
-	name_lbl.modulate = Color(1.0, 1.0, 1.0, 0.95)
-	name_lbl.add_theme_font_size_override("font_size", 11)
-	name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	name_lbl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	mid_hbox.add_child(name_lbl)
-	vbox.add_child(mid_hbox)
-	
-	# Pips row
-	var pips_lbl = Label.new()
-	pips_lbl.name = "PipsLabel"
-	pips_lbl.text = "[□□□□]"
-	pips_lbl.modulate = skill["icon_color"]
-	pips_lbl.add_theme_font_size_override("font_size", 9)
-	vbox.add_child(pips_lbl)
-	
-	# Mini Upgrade Button on Card
-	var mini_btn = Button.new()
-	mini_btn.name = "MiniUpgradeBtn"
-	mini_btn.text = "[+1 UPGRADE]"
-	mini_btn.add_theme_font_size_override("font_size", 9)
-	
-	var b_style = StyleBoxFlat.new()
-	b_style.bg_color = Color(0.06, 0.18, 0.3, 0.9)
-	b_style.border_color = skill["icon_color"]
-	b_style.set_border_width_all(1)
-	b_style.set_corner_radius_all(3)
-	mini_btn.add_theme_stylebox_override("normal", b_style)
-	
-	var b_hover = StyleBoxFlat.new()
-	b_hover.bg_color = Color(0.12, 0.32, 0.5, 1.0)
-	b_hover.border_color = Color.WHITE
-	b_hover.set_border_width_all(1)
-	b_hover.set_corner_radius_all(3)
-	mini_btn.add_theme_stylebox_override("hover", b_hover)
-	
-	mini_btn.pressed.connect(func():
-		GameManager.upgrade_skill(skill["id"])
-		select_skill(skill["id"])
-	)
-	mini_btn.mouse_entered.connect(_on_hover_sound)
-	vbox.add_child(mini_btn)
-	
-	# Click / Hover on panel opens inspector
-	panel.gui_input.connect(func(event: InputEvent):
-		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-			select_skill(skill["id"])
+		var tile := SkillTile.new()
+		tile.setup(_load_icon(skill), accent_for(skill), skill["max_lvl"])
+		tile.tooltip_text = skill["name"]
+		tile.mouse_entered.connect(func():
+			select_skill(skill_id)
 			_on_hover_sound()
-	)
-	panel.mouse_entered.connect(func():
-		select_skill(skill["id"])
-		_on_hover_sound()
-	)
-	
-	return panel
+		)
+		tile.mouse_exited.connect(_restore_pinned)
+		tile.focus_entered.connect(func(): _pin(skill_id, false))
+		tile.pressed.connect(func(): _try_upgrade(skill_id))
+		node_cards[skill_id] = tile
+		col_boxes[skill["branch"]].add_child(tile)
 
-func build_synergies_cards() -> void:
-	for child in synergies_vbox.get_children():
-		child.queue_free()
-	synergy_cards.clear()
-	
 	for syn_id in SkillData.SYNERGIES.keys():
 		var syn = SkillData.SYNERGIES[syn_id]
-		var panel = PanelContainer.new()
-		panel.custom_minimum_size = Vector2(0, 102)
-		
-		var style = StyleBoxFlat.new()
-		style.bg_color = Color(0.08, 0.03, 0.12, 0.92)
-		style.border_color = syn["icon_color"]
-		style.set_border_width_all(1)
-		style.set_corner_radius_all(6)
-		panel.add_theme_stylebox_override("panel", style)
-		
-		var margin = MarginContainer.new()
-		margin.add_theme_constant_override("margin_left", 8)
-		margin.add_theme_constant_override("margin_right", 8)
-		margin.add_theme_constant_override("margin_top", 6)
-		margin.add_theme_constant_override("margin_bottom", 6)
-		panel.add_child(margin)
-		
-		var vbox = VBoxContainer.new()
-		vbox.add_theme_constant_override("separation", 3)
-		margin.add_child(vbox)
-		
-		# Header
-		var code_lbl = Label.new()
-		code_lbl.text = "[%s] FUSION" % syn.get("code", "SYN")
-		code_lbl.modulate = Color(syn["icon_color"].r, syn["icon_color"].g, syn["icon_color"].b, 0.8)
-		code_lbl.add_theme_font_size_override("font_size", 9)
-		vbox.add_child(code_lbl)
-		
-		# Name
-		var name_lbl = Label.new()
-		name_lbl.text = syn["name"]
-		name_lbl.modulate = syn["icon_color"]
-		name_lbl.add_theme_font_size_override("font_size", 11)
-		name_lbl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-		vbox.add_child(name_lbl)
-		
-		# Requirement / Status badge
-		var status_badge = Label.new()
-		status_badge.name = "StatusBadge"
-		status_badge.add_theme_font_size_override("font_size", 9)
-		vbox.add_child(status_badge)
-		
-		panel.gui_input.connect(func(event: InputEvent):
-			if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-				select_synergy(syn_id)
-				_on_hover_sound()
-		)
-		panel.mouse_entered.connect(func():
+		var tile := SkillTile.new()
+		tile.setup(_load_icon(syn), SYNERGY_COLOR, 1, true)
+		tile.tooltip_text = CyberPalette.strip_emoji(syn["name"])
+		tile.mouse_entered.connect(func():
 			select_synergy(syn_id)
 			_on_hover_sound()
 		)
-		
-		synergy_cards[syn_id] = panel
-		synergies_vbox.add_child(panel)
+		tile.mouse_exited.connect(_restore_pinned)
+		tile.focus_entered.connect(func(): _pin(syn_id, true))
+		tile.pressed.connect(func(): _pin(syn_id, true))
+		synergy_cards[syn_id] = tile
+		syn_box.add_child(tile)
+
+func _make_column(title: String, color: Color, grid: bool = false, branch: int = -1) -> Container:
+	var col = VBoxContainer.new()
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	if grid:
+		col.size_flags_stretch_ratio = 2.0
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_theme_constant_override("separation", 14)
+
+	var head = HBoxContainer.new()
+	head.alignment = BoxContainer.ALIGNMENT_CENTER
+	head.add_theme_constant_override("separation", 8)
+	var bar = ColorRect.new()
+	bar.color = color
+	bar.custom_minimum_size = Vector2(4, 16)
+	head.add_child(bar)
+	var lbl = Label.new()
+	lbl.theme_type_variation = &"DimLabel"
+	lbl.text = title
+	lbl.add_theme_color_override("font_color", Color(color, 0.85))
+	head.add_child(lbl)
+	col.add_child(head)
+	if branch >= 0:
+		column_heads[branch] = {"label": lbl, "bar": bar, "title": title}
+
+	var nodes: Container
+	if grid:
+		# Synergies: 2-column grid, pushed right so link cables have room to curve
+		var g = GridContainer.new()
+		g.columns = 2
+		g.size_flags_horizontal = Control.SIZE_SHRINK_END
+		g.add_theme_constant_override("h_separation", 26)
+		g.add_theme_constant_override("v_separation", 22)
+		nodes = g
+	else:
+		var v = VBoxContainer.new()
+		v.add_theme_constant_override("separation", 22)
+		nodes = v
+	nodes.name = "NodesVBox"
+	nodes.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(nodes)
+	columns.add_child(col)
+	return nodes
+
+func build_doctrine_ui() -> void:
+	var plate = PanelContainer.new()
+	plate.theme_type_variation = &"HudPlate"
+	plate.tooltip_text = "Гілка з найбільшою кількістю очок (від %d) визначає стиль гри" % SkillData.DOCTRINE_MIN_POINTS
+	doctrine_label = Label.new()
+	doctrine_label.theme_type_variation = &"MonoLabel"
+	doctrine_label.add_theme_font_size_override("font_size", 16)
+	plate.add_child(doctrine_label)
+	header.add_child(plate)
+	header.move_child(plate, $Root/VBox/Header/PointsPlate.get_index())
+
+	doctrine_box = VBoxContainer.new()
+	doctrine_box.add_theme_constant_override("separation", 4)
+	doctrine_title = Label.new()
+	doctrine_title.theme_type_variation = &"DimLabel"
+	doctrine_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	doctrine_bonus = Label.new()
+	doctrine_malus = Label.new()
+	for l in [doctrine_bonus, doctrine_malus]:
+		l.add_theme_font_size_override("font_size", 13)
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	doctrine_bonus.add_theme_color_override("font_color", CyberPalette.GREEN)
+	doctrine_malus.add_theme_color_override("font_color", CyberPalette.RED)
+	doctrine_box.add_child(doctrine_title)
+	doctrine_box.add_child(doctrine_bonus)
+	doctrine_box.add_child(doctrine_malus)
+	inspector_vbox.add_child(doctrine_box)
+	inspector_vbox.move_child(doctrine_box, $Root/VBox/Body/InspectorPanel/VBox/Spacer.get_index())
+
+# Points the branch still needs to take over the doctrine; 0 when it already holds it
+func _doctrine_points_needed(branch: int) -> int:
+	if branch == GameManager.active_doctrine:
+		return 0
+	var need = SkillData.DOCTRINE_MIN_POINTS
+	if GameManager.active_doctrine >= 0:
+		need = max(need, GameManager.branch_points(GameManager.active_doctrine) + 1)
+	return need
+
+func refresh_doctrine() -> void:
+	var active = GameManager.active_doctrine
+	if active >= 0:
+		doctrine_label.text = "ДОКТРИНА: " + SkillData.DOCTRINES[active]["name"].to_upper()
+		doctrine_label.add_theme_color_override("font_color", CyberPalette.branch_color(active))
+	else:
+		doctrine_label.text = "ДОКТРИНА: —"
+		doctrine_label.add_theme_color_override("font_color", CyberPalette.DIM)
+	for branch in column_heads.keys():
+		var h = column_heads[branch]
+		var is_active = branch == active
+		h["label"].text = "%s  %d" % [h["title"], GameManager.branch_points(branch)]
+		h["label"].add_theme_color_override("font_color", Color(CyberPalette.branch_color(branch), 1.0 if is_active else 0.7))
+		h["bar"].custom_minimum_size = Vector2(10 if is_active else 4, 16)
+
+func _update_doctrine_block(branch: int) -> void:
+	var doc = SkillData.DOCTRINES[branch]
+	var need = _doctrine_points_needed(branch)
+	var state = "АКТИВНА" if need == 0 else "%d/%d ОЧОК" % [GameManager.branch_points(branch), need]
+	doctrine_title.text = "ДОКТРИНА «%s»  ·  %s" % [doc["name"].to_upper(), state]
+	doctrine_title.add_theme_color_override("font_color", CyberPalette.branch_color(branch) if need == 0 else CyberPalette.DIM)
+	doctrine_bonus.text = doc["bonus"]
+	doctrine_malus.text = doc["malus"]
+
+func _load_icon(data: Dictionary) -> Texture2D:
+	var p = data.get("icon_path", "")
+	return load(p) if ResourceLoader.exists(p) else null
+
+# Hover only previews a tile; click or keyboard focus pins it, so the mouse can
+# cross other tiles on the way to the inspector button without losing the choice.
+func _pin(id: String, is_synergy: bool) -> void:
+	pinned_id = id
+	pinned_is_synergy = is_synergy
+	_restore_pinned()
+
+func _restore_pinned() -> void:
+	if pinned_is_synergy:
+		select_synergy(pinned_id)
+	else:
+		select_skill(pinned_id)
+
+func _try_upgrade(skill_id: String) -> void:
+	_pin(skill_id, false)
+	if GameManager.can_upgrade_skill(skill_id):
+		_upgrade_with_burst(skill_id)
+	else:
+		AudioManager.play_sfx("shield_hit", 0.05, -10.0)
 
 func select_skill(skill_id: String) -> void:
 	if not SkillData.SKILLS.has(skill_id):
@@ -287,198 +286,293 @@ func select_synergy(syn_id: String) -> void:
 	selected_is_synergy = true
 	update_inspector()
 
+func _set_status(icon_name: String, text: String, col: Color) -> void:
+	status_icon.texture = CyberPalette.icon(icon_name)
+	status_icon.self_modulate = col
+	status_label.text = text
+	status_label.add_theme_color_override("font_color", col)
+
+func _clear_links() -> void:
+	for c in links_row.get_children():
+		c.queue_free()
+
+func _add_link_chip(data: Dictionary, col: Color, caption: String) -> void:
+	var chip = HBoxContainer.new()
+	chip.add_theme_constant_override("separation", 4)
+	chip.tooltip_text = CyberPalette.strip_emoji(data["name"])
+	chip.mouse_filter = Control.MOUSE_FILTER_PASS
+	var ic = TextureRect.new()
+	ic.texture = _load_icon(data)
+	ic.custom_minimum_size = Vector2(26, 26)
+	ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	ic.self_modulate = col
+	chip.add_child(ic)
+	if caption != "":
+		var lbl = Label.new()
+		lbl.theme_type_variation = &"MonoLabel"
+		lbl.add_theme_font_size_override("font_size", 14)
+		lbl.add_theme_color_override("font_color", col)
+		lbl.text = caption
+		chip.add_child(lbl)
+	links_row.add_child(chip)
+
 func update_inspector() -> void:
+	_clear_links()
+	for id in node_cards.keys():
+		node_cards[id].selected = (id == selected_skill_id and not selected_is_synergy)
+		node_cards[id].highlighted = false
+	for id in synergy_cards.keys():
+		synergy_cards[id].selected = (id == selected_skill_id and selected_is_synergy)
+
 	if selected_is_synergy:
 		var syn = SkillData.SYNERGIES[selected_skill_id]
-		inspector_name.text = syn["name"]
-		inspector_name.modulate = syn["icon_color"]
-		inspector_code.text = "CORE_SYNAPSE_FUSION: [%s]" % syn.get("code", "SYN")
-		inspector_pips.text = "[ МАТРИЧНА СИНЕРГІЯ ]"
-		
-		var icon_p = syn.get("icon_path", "")
-		if ResourceLoader.exists(icon_p):
-			inspector_icon.texture = load(icon_p)
-		inspector_icon.modulate = syn["icon_color"]
-		
 		var active = GameManager.is_synergy_active(selected_skill_id)
+		inspector_name.text = CyberPalette.strip_emoji(syn["name"])
+		inspector_name.add_theme_color_override("font_color", SYNERGY_COLOR)
+		inspector_icon.texture = _load_icon(syn)
+		inspector_icon.self_modulate = SYNERGY_COLOR if active else CyberPalette.LOCKED
+		inspector_pips.visible = false
+
 		if active:
-			inspector_status.text = "[STATUS: ONLINE // KERNEL COMPILED]"
-			inspector_status.modulate = Color(0.2, 1.0, 0.5)
+			_set_status("check", "АКТИВНА", CyberPalette.GREEN)
 		else:
-			inspector_status.text = "[STATUS: LOCKED // REQUIREMENTS PENDING]"
-			inspector_status.modulate = Color(1.0, 0.4, 0.4)
-			
+			_set_status("lock", "ЗАБЛОКОВАНО", CyberPalette.RED)
 		inspector_desc.text = syn["desc"]
-		
-		# Show requirements
-		var req_strs: Array[String] = []
+		next_row.visible = false
+
+		links_title.text = "ПОТРІБНО"
 		for rk in syn["req"].keys():
-			var rname = SkillData.SKILLS[rk]["name"]
-			var req_lvl = syn["req"][rk]
-			var cur_lvl = GameManager.get_skill_level(rk)
-			req_strs.append("%s (v%d / v%d)" % [rname, cur_lvl, req_lvl])
-		inspector_next.text = "⚡ НЕОБХІДНІ КОМПОНЕНТИ:\n" + " + ".join(req_strs)
-		inspector_syn_hint.text = "Автоматично активується при досягненні необхідних рівнів обох компонентів!"
-		
-		inspector_upgrade_btn.disabled = true
-		inspector_upgrade_btn.text = "[ СИНЕРГІЯ АКТИВНА ]" if active else "[ ОЧІКУЄ ДОСЛІДЖЕННЯ КОМПОНЕНТІВ ]"
+			var cur = GameManager.get_skill_level(rk)
+			var need = syn["req"][rk]
+			var col = CyberPalette.GREEN if cur >= need else CyberPalette.DIM
+			_add_link_chip(SkillData.SKILLS[rk], col, "%d/%d" % [min(cur, need), need])
+			if node_cards.has(rk):
+				node_cards[rk].highlighted = true
+		links_title.visible = true
+		inspector_upgrade_btn.visible = false
+		doctrine_box.visible = false
 	else:
 		var skill = SkillData.SKILLS[selected_skill_id]
 		var cur_lvl = GameManager.get_skill_level(selected_skill_id)
 		var max_lvl = skill["max_lvl"]
-		
+		var accent = accent_for(skill)
+
 		inspector_name.text = skill["name"]
-		inspector_name.modulate = skill["icon_color"]
-		inspector_code.text = "ID: [%s] // PROTOCOL: %s" % [skill.get("code", "SYS"), get_branch_name(skill["branch"])]
-		
-		var pips = ""
-		for i in range(max_lvl):
-			pips += "■ " if i < cur_lvl else "□ "
-		inspector_pips.text = "[ %s] (Рівень %d / %d)" % [pips, cur_lvl, max_lvl]
-		
-		var icon_p = skill.get("icon_path", "")
-		if ResourceLoader.exists(icon_p):
-			inspector_icon.texture = load(icon_p)
-		inspector_icon.modulate = skill["icon_color"]
-		
+		inspector_name.add_theme_color_override("font_color", accent)
+		inspector_icon.texture = _load_icon(skill)
+		inspector_pips.visible = true
+		inspector_pips.queue_redraw()
+
 		var can_up = GameManager.can_upgrade_skill(selected_skill_id)
+		var prereq_locked = skill["prereq"] != "" and GameManager.get_skill_level(skill["prereq"]) < skill["prereq_lvl"]
+		inspector_icon.self_modulate = CyberPalette.LOCKED if prereq_locked else accent
+
 		if cur_lvl >= max_lvl:
-			inspector_status.text = "[STATUS: MAX OVERCLOCK COMPILED]"
-			inspector_status.modulate = Color(1.0, 0.85, 0.25)
-		elif skill["prereq"] != "" and GameManager.get_skill_level(skill["prereq"]) < skill["prereq_lvl"]:
-			var req_name = SkillData.SKILLS[skill["prereq"]]["name"]
-			inspector_status.text = "[LOCKED // ПОТРІБНО: %s Рів. %d]" % [req_name, skill["prereq_lvl"]]
-			inspector_status.modulate = Color(1.0, 0.35, 0.35)
+			_set_status("check", "МАКСИМУМ", CyberPalette.GREEN)
+		elif prereq_locked:
+			var req = SkillData.SKILLS[skill["prereq"]]
+			_set_status("lock", "%s  LV %d" % [req["name"], skill["prereq_lvl"]], CyberPalette.RED)
+		elif can_up:
+			_set_status("upgrade", "ДОСТУПНО", CyberPalette.YELLOW)
 		else:
-			inspector_status.text = "[STATUS: READY FOR FLASH // 1 CORE POINT]"
-			inspector_status.modulate = Color(0.25, 0.9, 1.0)
-			
+			_set_status("level", "НЕМАЄ ОЧОК", CyberPalette.DIM)
+
 		inspector_desc.text = skill["desc"]
-		inspector_next.text = "⚡ НАСТУПНИЙ РІВЕНЬ: " + skill["per_level"]
-		
-		# Find associated synergies
-		var related_syn: Array[String] = []
+		next_row.visible = cur_lvl < max_lvl
+		inspector_next.text = skill["per_level"]
+
+		var has_links = false
 		for syn_id in SkillData.SYNERGIES.keys():
 			var syn = SkillData.SYNERGIES[syn_id]
 			if syn["req"].has(selected_skill_id):
-				related_syn.append(syn["name"])
-		if related_syn.size() > 0:
-			inspector_syn_hint.text = "✨ БЕРЕ УЧАСТЬ У СИНЕРГІЯХ: " + ", ".join(related_syn)
-		else:
-			inspector_syn_hint.text = "✨ БАЗОВА ОПТИМІЗАЦІЯ СИСТЕМИ"
-			
-		if cur_lvl >= max_lvl:
-			inspector_upgrade_btn.disabled = true
-			inspector_upgrade_btn.text = "[ МАКСИМАЛЬНИЙ РІВЕНЬ ]"
-		else:
-			inspector_upgrade_btn.disabled = not can_up
-			inspector_upgrade_btn.text = "[ ⚡ ВСТАНОВИТИ ПРОШИВКУ v%d ]" % (cur_lvl + 1)
+				var col = SYNERGY_COLOR if GameManager.is_synergy_active(syn_id) else CyberPalette.DIM
+				_add_link_chip(syn, col, "")
+				has_links = true
+		links_title.text = "СИНЕРГІЇ"
+		links_title.visible = has_links
+
+		doctrine_box.visible = true
+		_update_doctrine_block(skill["branch"])
+
+		inspector_upgrade_btn.visible = true
+		inspector_upgrade_btn.disabled = not can_up
+		inspector_upgrade_btn.text = "МАКСИМУМ" if cur_lvl >= max_lvl else "ВСТАНОВИТИ  v%d" % (cur_lvl + 1)
+
+func _on_inspector_pips_draw() -> void:
+	if selected_is_synergy or not SkillData.SKILLS.has(selected_skill_id):
+		return
+	var skill = SkillData.SKILLS[selected_skill_id]
+	var w = min(inspector_pips.size.x, 36.0 * skill["max_lvl"])
+	var r = Rect2((inspector_pips.size.x - w) * 0.5, 0, w, inspector_pips.size.y)
+	SkillTile.draw_pips(inspector_pips, r, GameManager.get_skill_level(selected_skill_id), skill["max_lvl"], accent_for(skill))
 
 func _on_inspector_upgrade_pressed() -> void:
 	if not selected_is_synergy:
-		GameManager.upgrade_skill(selected_skill_id)
+		_upgrade_with_burst(selected_skill_id)
 		update_inspector()
 
+# Upgrade and play the tile burst; also burst any synergy tile this upgrade activated
+func _upgrade_with_burst(skill_id: String) -> void:
+	var syn_before := GameManager.active_synergies.duplicate()
+	if not GameManager.upgrade_skill(skill_id):
+		return
+	if node_cards.has(skill_id):
+		node_cards[skill_id].play_upgrade_burst()
+	for syn_id in GameManager.active_synergies:
+		if syn_id not in syn_before and synergy_cards.has(syn_id):
+			synergy_cards[syn_id].play_upgrade_burst()
+
 func refresh_all() -> void:
-	points_label.text = "[ ⚡ ДОСТУПНІ ЯДРА ПАМ'ЯТІ: 0x%02X ]" % GameManager.available_skill_points
-	
-	# Update skill cards
+	# stats_updated fires on every kill; only rebuild while the matrix is on screen
+	if not visible:
+		return
+	points_label.text = str(GameManager.available_skill_points)
+	refresh_doctrine()
+
 	for skill_id in node_cards.keys():
-		var card = node_cards[skill_id]
 		var skill = SkillData.SKILLS[skill_id]
 		var cur_lvl = GameManager.get_skill_level(skill_id)
-		var max_lvl = skill["max_lvl"]
-		
-		var lvl_lbl: Label = card.find_child("LevelLabel", true, false)
-		if lvl_lbl:
-			lvl_lbl.text = "v%d/%d" % [cur_lvl, max_lvl]
-			
-		var pips_lbl: Label = card.find_child("PipsLabel", true, false)
-		if pips_lbl:
-			var pips = ""
-			for i in range(max_lvl):
-				pips += "■" if i < cur_lvl else "□"
-			pips_lbl.text = "[%s]" % pips
-			
-		var mini_btn: Button = card.find_child("MiniUpgradeBtn", true, false)
-		if mini_btn:
-			var can_up = GameManager.can_upgrade_skill(skill_id)
-			mini_btn.disabled = not can_up
-			if cur_lvl >= max_lvl:
-				mini_btn.text = "[MAXED]"
-				mini_btn.disabled = true
-			else:
-				mini_btn.text = "[+1 UPGRADE]"
-				
-	# Update synergy cards
+		var st := SkillTile.TileState.AVAILABLE
+		if cur_lvl >= skill["max_lvl"]:
+			st = SkillTile.TileState.MAXED
+		elif skill["prereq"] != "" and GameManager.get_skill_level(skill["prereq"]) < skill["prereq_lvl"]:
+			st = SkillTile.TileState.LOCKED
+		elif GameManager.can_upgrade_skill(skill_id):
+			st = SkillTile.TileState.UPGRADABLE
+		node_cards[skill_id].set_state(cur_lvl, st)
+
 	for syn_id in synergy_cards.keys():
-		var card = synergy_cards[syn_id]
 		var syn = SkillData.SYNERGIES[syn_id]
-		var status_badge: Label = card.find_child("StatusBadge", true, false)
-		if status_badge:
-			if GameManager.is_synergy_active(syn_id):
-				status_badge.text = "[ONLINE]"
-				status_badge.modulate = Color(0.2, 1.0, 0.45)
-			else:
-				var parts: Array[String] = []
-				for rk in syn["req"].keys():
-					var clvl = GameManager.get_skill_level(rk)
-					var rlvl = syn["req"][rk]
-					parts.append("%s:%d/%d" % [SkillData.SKILLS[rk].get("code", "REQ"), clvl, rlvl])
-				status_badge.text = " + ".join(parts)
-				status_badge.modulate = Color(0.7, 0.75, 0.85)
-				
+		var active = GameManager.is_synergy_active(syn_id)
+		var progress: Array = []
+		for rk in syn["req"].keys():
+			progress.append([float(min(GameManager.get_skill_level(rk), syn["req"][rk])) / syn["req"][rk], accent_for(SkillData.SKILLS[rk])])
+		synergy_cards[syn_id].req_progress = progress
+		synergy_cards[syn_id].set_state(1 if active else 0, SkillTile.TileState.ACTIVE if active else SkillTile.TileState.LOCKED)
+
 	update_inspector()
 	wire_overlay.queue_redraw()
 
 func _on_wire_overlay_draw() -> void:
 	if not visible:
 		return
-		
-	# Draw circuit traces connecting parent skills to child skills
+	var origin = wire_overlay.global_position
+	
+	# 1. Circuit traces from each prerequisite to its child skill
 	for skill_id in SkillData.SKILLS.keys():
 		var skill = SkillData.SKILLS[skill_id]
 		var prereq_id = skill["prereq"]
-		if prereq_id != "" and node_cards.has(prereq_id) and node_cards.has(skill_id):
-			var parent_card: PanelContainer = node_cards[prereq_id]
-			var child_card: PanelContainer = node_cards[skill_id]
-			
-			var p_rect = parent_card.get_global_rect()
-			var c_rect = child_card.get_global_rect()
-			
-			var p_pt = p_rect.get_center() - wire_overlay.global_position
-			var c_pt = c_rect.get_center() - wire_overlay.global_position
-			
-			# Wire exits bottom of parent and enters top of child
-			var start_pt = Vector2(p_pt.x, p_rect.end.y - wire_overlay.global_position.y)
-			var end_pt = Vector2(c_pt.x, c_rect.position.y - wire_overlay.global_position.y)
-			
-			var is_unlocked = GameManager.get_skill_level(prereq_id) >= skill["prereq_lvl"]
-			var col = skill["icon_color"] if is_unlocked else Color(0.25, 0.35, 0.45, 0.4)
-			var wire_width = 3.0 if is_unlocked else 1.5
-			
-			# Draw circuit trace with right angles
-			var mid_y = lerpf(start_pt.y, end_pt.y, 0.5)
-			wire_overlay.draw_line(start_pt, Vector2(start_pt.x, mid_y), col, wire_width)
-			wire_overlay.draw_line(Vector2(start_pt.x, mid_y), Vector2(end_pt.x, mid_y), col, wire_width)
-			wire_overlay.draw_line(Vector2(end_pt.x, mid_y), end_pt, col, wire_width)
-			
-			# Little circuit terminal dots
-			wire_overlay.draw_circle(start_pt, 3.5, col)
-			wire_overlay.draw_circle(end_pt, 3.5, col)
-			
-			# Flowing energetic pulse dot when unlocked
-			if is_unlocked:
-				var t = fmod(pulse_time * 0.8 + float(skill["tier"]) * 0.3, 1.0)
-				var pulse_pos = start_pt.lerp(end_pt, t)
-				wire_overlay.draw_circle(pulse_pos, 4.0, Color.WHITE)
+		if prereq_id == "" or not node_cards.has(prereq_id) or not node_cards.has(skill_id):
+			continue
+		var p_rect: Rect2 = node_cards[prereq_id].get_global_rect()
+		var c_rect: Rect2 = node_cards[skill_id].get_global_rect()
+		var is_unlocked = GameManager.get_skill_level(prereq_id) >= skill["prereq_lvl"]
+		var accent: Color = accent_for(skill)
+		
+		var pts: PackedVector2Array
+		var tier_gap = int(skill["tier"]) - int(SkillData.SKILLS[prereq_id]["tier"])
+		if tier_gap <= 1:
+			# Straight drop from parent bottom to child top
+			var x = p_rect.get_center().x - origin.x
+			pts = PackedVector2Array([Vector2(x, p_rect.end.y - origin.y - 4), Vector2(x, c_rect.position.y - origin.y + 2)])
+		else:
+			# Skip connection: route around the left side of the tiles in between
+			var lx = p_rect.position.x - origin.x - 14.0
+			var py = p_rect.get_center().y - origin.y - 6.0
+			var cy = c_rect.get_center().y - origin.y - 6.0
+			pts = PackedVector2Array([
+				Vector2(p_rect.position.x - origin.x + 2, py), Vector2(lx, py),
+				Vector2(lx, cy), Vector2(c_rect.position.x - origin.x + 2, cy)
+			])
+		if is_unlocked:
+			_draw_glow_path(pts, accent, 1.0)
+			var t = fmod(pulse_time * 0.6 + float(skill["tier"]) * 0.3, 1.0)
+			_draw_packet(_point_on_path(pts, t), accent)
+		else:
+			_draw_dashed_path(pts, Color(CyberPalette.LOCKED, 0.55))
+		# Requirement level badge at the joint
+		var mid = _point_on_path(pts, 0.5)
+		var need = skill["prereq_lvl"]
+		var have = min(GameManager.get_skill_level(prereq_id), need)
+		_draw_req_pips(mid, have, need, accent if is_unlocked else CyberPalette.LOCKED)
+	
+	# 2. Synergy links: curved cables from each requirement tile to its synergy tile.
+	# Faint by default; bright and animated when the synergy, or one of its parts, is focused.
+	for syn_id in SkillData.SYNERGIES.keys():
+		if not synergy_cards.has(syn_id):
+			continue
+		var syn = SkillData.SYNERGIES[syn_id]
+		var s_rect: Rect2 = synergy_cards[syn_id].get_global_rect()
+		var active = GameManager.is_synergy_active(syn_id)
+		var focus = (selected_is_synergy and selected_skill_id == syn_id) or (not selected_is_synergy and syn["req"].has(selected_skill_id))
+		var target = Vector2(s_rect.position.x - origin.x + 4, s_rect.position.y - origin.y + s_rect.size.x * 0.5)
+		var k = 0
+		for rk in syn["req"].keys():
+			if not node_cards.has(rk):
+				continue
+			var r_rect: Rect2 = node_cards[rk].get_global_rect()
+			var src = Vector2(r_rect.end.x - origin.x - 4, r_rect.position.y - origin.y + r_rect.size.x * 0.5)
+			var met = GameManager.get_skill_level(rk) >= syn["req"][rk]
+			var dst = target + Vector2(0, -10 if k == 0 else 10)
+			var curve = _bezier(src, src + Vector2(70, 0), dst - Vector2(70, 0), dst, 24)
+			var col = SYNERGY_COLOR if (met or active) else accent_for(SkillData.SKILLS[rk])
+			if active:
+				_draw_glow_path(curve, SYNERGY_COLOR, 0.8 if focus else 0.45)
+				_draw_packet(_point_on_path(curve, fmod(pulse_time * 0.4 + k * 0.5, 1.0)), SYNERGY_COLOR)
+			elif focus:
+				_draw_glow_path(curve, col, 0.7 if met else 0.45)
+				_draw_packet(_point_on_path(curve, fmod(pulse_time * 0.5 + k * 0.5, 1.0)), col)
+			else:
+				wire_overlay.draw_polyline(curve, Color(col, 0.10 if not met else 0.22), 1.5, true)
+			k += 1
 
-func get_branch_name(branch: int) -> String:
-	match branch:
-		SkillData.Branch.OFFENSE: return "OFFENSE_SYS"
-		SkillData.Branch.DEFENSE: return "DEFENSE_SYS"
-		SkillData.Branch.OVERCLOCK: return "OVERCLOCK_SYS"
-		_: return "GENERAL"
+func _draw_glow_path(pts: PackedVector2Array, col: Color, strength: float) -> void:
+	wire_overlay.draw_polyline(pts, Color(col, 0.10 * strength), 9.0, true)
+	wire_overlay.draw_polyline(pts, Color(col, 0.30 * strength), 4.5, true)
+	wire_overlay.draw_polyline(pts, Color(col.lerp(Color.WHITE, 0.35), 0.95 * strength), 1.8, true)
+	wire_overlay.draw_circle(pts[0], 3.5, Color(col, strength))
+	wire_overlay.draw_circle(pts[pts.size() - 1], 3.5, Color(col, strength))
+
+func _draw_dashed_path(pts: PackedVector2Array, col: Color) -> void:
+	for i in range(1, pts.size()):
+		wire_overlay.draw_dashed_line(pts[i - 1], pts[i], col, 1.5, 6.0)
+
+func _draw_packet(p: Vector2, col: Color) -> void:
+	wire_overlay.draw_circle(p, 7.0, Color(col, 0.25))
+	wire_overlay.draw_circle(p, 3.2, Color.WHITE)
+
+# Small chip on a wire: filled segments = prerequisite levels reached
+func _draw_req_pips(center: Vector2, have: int, need: int, col: Color) -> void:
+	var w = 6.0
+	var gap = 2.0
+	var total_w = need * w + (need - 1) * gap
+	var r = Rect2(center.x - total_w * 0.5 - 4, center.y - 6, total_w + 8, 12)
+	wire_overlay.draw_rect(r, Color(0.02, 0.02, 0.04, 0.95))
+	wire_overlay.draw_rect(r, Color(col, 0.6), false, 1.0)
+	for i in range(need):
+		var x = r.position.x + 4 + i * (w + gap)
+		wire_overlay.draw_rect(Rect2(x, center.y - 3, w, 6), col if i < have else Color(col, 0.2))
+
+func _bezier(p0: Vector2, p1: Vector2, p2: Vector2, p3: Vector2, steps: int) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	for i in range(steps + 1):
+		var t = float(i) / steps
+		var u = 1.0 - t
+		out.append(u * u * u * p0 + 3.0 * u * u * t * p1 + 3.0 * u * t * t * p2 + t * t * t * p3)
+	return out
+
+func _point_on_path(pts: PackedVector2Array, t: float) -> Vector2:
+	var total = 0.0
+	for i in range(1, pts.size()):
+		total += pts[i - 1].distance_to(pts[i])
+	var d = t * total
+	for i in range(1, pts.size()):
+		var seg = pts[i - 1].distance_to(pts[i])
+		if d <= seg:
+			return pts[i - 1].lerp(pts[i], d / max(seg, 0.001))
+		d -= seg
+	return pts[pts.size() - 1]
 
 func _on_hover_sound() -> void:
 	AudioManager.play_sfx("ui_hover", 0.05, -8.0)

@@ -11,10 +11,25 @@ var beam_fired: bool = false
 # Jagged lightning crackles along the beam
 var lightning_segments: Array[Vector2] = []
 
+# --- Visual-only state ---
+const GLOW_TEX := preload("res://assets/sprites/fx/glow_soft.png")
+const SPARK_TEX := preload("res://assets/sprites/fx/spark_star.png")
+const RING_TEX := preload("res://assets/sprites/fx/ring.png")
+const LIFE := 0.4
+const CHARGE := 0.06
+const MAX_HIT_MARKS := 10
+var elapsed: float = 0.0
+# Local positions of the first enemies hit, for impact flashes (bounded)
+var hit_marks: PackedVector2Array = PackedVector2Array()
+
 func setup(p_origin: Vector2, p_direction: Vector2, p_damage: float) -> void:
 	global_position = p_origin
 	direction = p_direction.normalized()
 	damage = p_damage
+	# Visual only: rebuild the crackle along the real direction and drop flashes
+	# recorded before setup() moved the node (fire order is player.gd's concern)
+	generate_lightning_arcs()
+	hit_marks.clear()
 	if is_inside_tree() and not beam_fired:
 		fire_beam()
 
@@ -23,9 +38,6 @@ func _ready() -> void:
 	generate_lightning_arcs()
 	if not beam_fired:
 		fire_beam()
-	var tween = create_tween()
-	tween.tween_property(self, "alpha", 0.0, 0.4).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tween.chain().tween_callback(queue_free)
 
 func generate_lightning_arcs() -> void:
 	lightning_segments.clear()
@@ -40,14 +52,14 @@ func fire_beam() -> void:
 	if beam_fired or not is_inside_tree():
 		return
 	beam_fired = true
-	
+
 	var world = get_world_2d()
 	if not world:
 		return
 	var space_state = world.direct_space_state
 	if not space_state:
 		return
-		
+
 	# Raycast Query
 	var query = PhysicsShapeQueryParameters2D.new()
 	var shape = SegmentShape2D.new()
@@ -56,44 +68,64 @@ func fire_beam() -> void:
 	query.shape = shape
 	query.collision_mask = 2 # Enemies
 	query.transform = Transform2D(0.0, global_position)
-	
+
 	var results = space_state.intersect_shape(query, 128)
 	var hit_list: Array[Node2D] = []
 	for res in results:
 		var collider = res.collider
 		if collider and collider.is_in_group("enemies") and collider not in hit_list:
 			hit_list.append(collider)
+			if hit_marks.size() < MAX_HIT_MARKS:
+				hit_marks.append(collider.global_position - global_position)
 			if collider.has_method("take_damage"):
 				collider.take_damage(damage, direction)
-				
+
 	AudioManager.play_sfx("railgun", 0.1)
 
-func _process(_delta: float) -> void:
+# Fade driven by a timer instead of a Tween (same 0.4 s ease-out curve)
+func _process(delta: float) -> void:
+	elapsed += delta
+	var k := elapsed / LIFE
+	if k >= 1.0:
+		queue_free()
+		return
+	alpha = 1.0 - (1.0 - (1.0 - k) * (1.0 - k))
 	queue_redraw()
 
 func _draw() -> void:
 	var end_pt = direction * beam_length
-	
-	# 1. Broad outer energetic ionization aura
-	var aura_col = Color(0.1, 1.0, 0.6, alpha * 0.4)
-	draw_line(Vector2.ZERO, end_pt, aura_col, beam_width * 2.2)
-	
+	# Charge: beam snaps open over the first frames, then thins while fading
+	var open := clampf(elapsed / CHARGE, 0.0, 1.0)
+	var w := beam_width * open * (0.45 + 0.55 * alpha)
+
+	# 0. Muzzle charge flash at the emitter
+	var cs := 70.0 * (0.6 + 0.8 * alpha)
+	draw_texture_rect(GLOW_TEX, Rect2(-Vector2(cs, cs) * 0.5, Vector2(cs, cs)), false, Color(0.2, 1.0, 0.75, alpha))
+	var ss := 46.0 * alpha
+	draw_set_transform(Vector2.ZERO, elapsed * 6.0, Vector2.ONE)
+	draw_texture_rect(SPARK_TEX, Rect2(-Vector2(ss, ss) * 0.5, Vector2(ss, ss)), false, Color(1, 1, 1, alpha))
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+	# 1. Broad outer ionisation aura
+	draw_line(Vector2.ZERO, end_pt, Color(0.1, 1.0, 0.6, alpha * 0.35), w * 2.6)
+
 	# 2. Main cyan/emerald beam glow
-	var glow_col = Color(0.2, 0.95, 0.7, alpha * 0.85)
-	draw_line(Vector2.ZERO, end_pt, glow_col, beam_width)
-	
-	# 3. Blinding white tachyon core
-	var core_col = Color(1.0, 1.0, 1.0, alpha * 0.98)
-	draw_line(Vector2.ZERO, end_pt, core_col, beam_width * 0.4)
-	
+	draw_line(Vector2.ZERO, end_pt, Color(0.2, 0.95, 0.7, alpha * 0.85), w)
+
+	# 3. Blinding white core
+	draw_line(Vector2.ZERO, end_pt, Color(1.0, 1.0, 1.0, alpha * 0.98), maxf(1.0, w * 0.35))
+
 	# 4. Crackling lightning arcs along the beam
 	if lightning_segments.size() > 1:
-		for i in range(lightning_segments.size() - 1):
-			var p1 = lightning_segments[i]
-			var p2 = lightning_segments[i+1]
-			draw_line(p1, p2, Color(0.5, 1.0, 0.85, alpha * 0.9), 2.2)
-			
-	# 5. Expanding ring bursts along beam trajectory
+		draw_polyline(PackedVector2Array(lightning_segments), Color(0.5, 1.0, 0.85, alpha * 0.9), 2.2)
+
+	# 5. Expanding ring bursts along the trajectory
 	for i in range(1, 5):
 		var ring_pos = direction * (i * (beam_length / 5.0))
-		draw_arc(ring_pos, 16.0 * (1.5 - alpha), 0, TAU, 16, Color(0.2, 1.0, 0.7, alpha * 0.7), 2.0)
+		var rr := 18.0 * (1.6 - alpha) / 0.6
+		draw_texture_rect(RING_TEX, Rect2(ring_pos - Vector2(rr, rr), Vector2(rr, rr) * 2.0), false, Color(0.2, 1.0, 0.7, alpha * 0.7))
+
+	# 6. Impact flashes on struck enemies
+	var hs := 40.0 * (0.7 + 0.6 * (1.0 - alpha))
+	for p in hit_marks:
+		draw_texture_rect(GLOW_TEX, Rect2(p - Vector2(hs, hs) * 0.5, Vector2(hs, hs)), false, Color(0.4, 1.0, 0.8, alpha))

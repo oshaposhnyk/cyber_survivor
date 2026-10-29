@@ -1,185 +1,116 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://scenes/ui/skill_tree.gd" id="1_script"]
-[ext_resource type="FontFile" path="res://assets/fonts/Kenney Future.ttf" id="2_font"]
+[ext_resource type="Shader" path="res://assets/shaders/crt_overlay.gdshader" id="2_crt"]
+[ext_resource type="Texture2D" path="res://assets/sprites/ui/gi/circuit.png" id="3_circuit"]
+[ext_resource type="Texture2D" path="res://assets/sprites/ui/gi/level.png" id="4_level"]
+[ext_resource type="Texture2D" path="res://assets/sprites/ui/gi/close.png" id="5_close"]
+[ext_resource type="Texture2D" path="res://assets/sprites/ui/gi/upgrade.png" id="6_upgrade"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bg"]
-bg_color = Color(0.02, 0.04, 0.07, 0.96)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.15, 0.75, 1, 0.85)
-shadow_color = Color(0, 0.5, 0.9, 0.3)
-shadow_size = 24
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_col_offense"]
-bg_color = Color(0.03, 0.1, 0.18, 0.9)
-border_width_left = 1
-border_width_top = 2
-border_width_right = 1
-border_width_bottom = 2
-border_color = Color(0.2, 0.75, 1, 0.9)
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_col_defense"]
-bg_color = Color(0.02, 0.12, 0.08, 0.9)
-border_width_left = 1
-border_width_top = 2
-border_width_right = 1
-border_width_bottom = 2
-border_color = Color(0.2, 0.9, 0.5, 0.9)
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_col_overclock"]
-bg_color = Color(0.14, 0.07, 0.02, 0.9)
-border_width_left = 1
-border_width_top = 2
-border_width_right = 1
-border_width_bottom = 2
-border_color = Color(1, 0.65, 0.25, 0.9)
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_col_synergies"]
-bg_color = Color(0.12, 0.03, 0.16, 0.9)
-border_width_left = 1
-border_width_top = 2
-border_width_right = 1
-border_width_bottom = 2
-border_color = Color(0.95, 0.4, 1, 0.9)
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn"]
-bg_color = Color(0.08, 0.26, 0.45, 0.95)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.3, 0.85, 1, 1)
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
-shadow_color = Color(0, 0.7, 1, 0.3)
-shadow_size = 8
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_hover"]
-bg_color = Color(0.12, 0.38, 0.65, 1)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.6, 1, 1, 1)
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
-shadow_color = Color(0, 0.9, 1, 0.5)
-shadow_size = 12
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_inspector"]
-bg_color = Color(0.03, 0.06, 0.11, 0.95)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.15, 0.75, 1, 0.9)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
-shadow_color = Color(0, 0.5, 0.8, 0.25)
-shadow_size = 10
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_crt"]
+shader = ExtResource("2_crt")
+shader_parameter/scanline_alpha = 0.1
+shader_parameter/scanline_density = 3.0
+shader_parameter/vignette_strength = 0.8
+shader_parameter/band_alpha = 0.03
+shader_parameter/grain_alpha = 0.03
+shader_parameter/tint = Color(0, 0, 0, 1)
 
 [node name="SkillTree" type="CanvasLayer"]
 process_mode = 3
 layer = 20
 script = ExtResource("1_script")
 
-[node name="Panel" type="Panel" parent="."]
+[node name="Backdrop" type="ColorRect" parent="."]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_bg")
+color = Color(0.012, 0.012, 0.025, 0.97)
 
-[node name="Margin" type="MarginContainer" parent="Panel"]
-layout_mode = 1
+[node name="Root" type="MarginContainer" parent="."]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/margin_left = 20
-theme_override_constants/margin_top = 14
-theme_override_constants/margin_right = 20
-theme_override_constants/margin_bottom = 14
+theme_override_constants/margin_left = 28
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 28
+theme_override_constants/margin_bottom = 20
 
-[node name="VBox" type="VBoxContainer" parent="Panel/Margin"]
+[node name="VBox" type="VBoxContainer" parent="Root"]
 layout_mode = 2
-theme_override_constants/separation = 10
+theme_override_constants/separation = 14
 
-[node name="Header" type="HBoxContainer" parent="Panel/Margin/VBox"]
+[node name="Header" type="HBoxContainer" parent="Root/VBox"]
 layout_mode = 2
-
-[node name="TitleBox" type="VBoxContainer" parent="Panel/Margin/VBox/Header"]
-layout_mode = 2
-theme_override_constants/separation = 2
-
-[node name="Title" type="Label" parent="Panel/Margin/VBox/Header/TitleBox"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.2, 0.9, 1, 1)
-theme_override_colors/font_shadow_color = Color(0, 0.5, 0.8, 0.5)
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 17
-text = "◆ НЕЙРОННА МАТРИЦЯ МОДЕРНІЗАЦІЇ АНДРОЇДА [ARC-01] ◆"
-
-[node name="TelemetrySub" type="Label" parent="Panel/Margin/VBox/Header/TitleBox"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.4, 0.75, 0.95, 0.8)
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 10
-text = "[KERNEL: v2.4.0] // [BUS: 4.8 GHz] // [NEURAL LINK: SYNCHRONIZED]"
-
-[node name="PointsLabel" type="Label" parent="Panel/Margin/VBox/Header"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_colors/font_color = Color(1, 0.82, 0.25, 1)
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 16
-text = "⚡ ДОСТУПНІ ЯДРА ПАМ'ЯТІ: 0x00"
-horizontal_alignment = 2
-
-[node name="Body" type="HBoxContainer" parent="Panel/Margin/VBox"]
-layout_mode = 2
-size_flags_vertical = 3
 theme_override_constants/separation = 12
 
-[node name="TreeScroll" type="ScrollContainer" parent="Panel/Margin/VBox/Body"]
+[node name="HeaderIcon" type="TextureRect" parent="Root/VBox/Header"]
+custom_minimum_size = Vector2(34, 34)
 layout_mode = 2
-size_flags_horizontal = 3
-size_flags_stretch_ratio = 2.4
+size_flags_vertical = 4
+texture = ExtResource("3_circuit")
+expand_mode = 1
+stretch_mode = 5
+self_modulate = Color(0.988, 0.933, 0.039, 1)
 
-[node name="TreeBoard" type="Control" parent="Panel/Margin/VBox/Body/TreeScroll"]
-custom_minimum_size = Vector2(860, 560)
+[node name="Title" type="Label" parent="Root/VBox/Header"]
+layout_mode = 2
+theme_type_variation = &"TitleLabel"
+theme_override_font_sizes/font_size = 28
+text = "МОДЕРНІЗАЦІЯ"
+
+[node name="Spacer" type="Control" parent="Root/VBox/Header"]
 layout_mode = 2
 size_flags_horizontal = 3
+
+[node name="PointsPlate" type="PanelContainer" parent="Root/VBox/Header"]
+layout_mode = 2
+tooltip_text = "Вільні очки модернізації"
+theme_type_variation = &"HudPlate"
+
+[node name="HBox" type="HBoxContainer" parent="Root/VBox/Header/PointsPlate"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Icon" type="TextureRect" parent="Root/VBox/Header/PointsPlate/HBox"]
+custom_minimum_size = Vector2(26, 26)
+layout_mode = 2
+size_flags_vertical = 4
+texture = ExtResource("4_level")
+expand_mode = 1
+stretch_mode = 5
+self_modulate = Color(0.988, 0.933, 0.039, 1)
+
+[node name="PointsLabel" type="Label" parent="Root/VBox/Header/PointsPlate/HBox"]
+layout_mode = 2
+theme_type_variation = &"MonoLabel"
+theme_override_font_sizes/font_size = 24
+text = "0"
+
+[node name="CloseBtn" type="Button" parent="Root/VBox/Header"]
+custom_minimum_size = Vector2(44, 44)
+layout_mode = 2
+size_flags_vertical = 4
+tooltip_text = "Закрити  [TAB / ESC]"
+theme_type_variation = &"IconButton"
+icon = ExtResource("5_close")
+icon_alignment = 1
+expand_icon = true
+
+[node name="Body" type="HBoxContainer" parent="Root/VBox"]
+layout_mode = 2
 size_flags_vertical = 3
+theme_override_constants/separation = 22
 
-[node name="WireOverlay" type="Control" parent="Panel/Margin/VBox/Body/TreeScroll/TreeBoard"]
+[node name="TreeBoard" type="Control" parent="Root/VBox/Body"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="WireOverlay" type="Control" parent="Root/VBox/Body/TreeBoard"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -188,200 +119,120 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
-[node name="Columns" type="HBoxContainer" parent="Panel/Margin/VBox/Body/TreeScroll/TreeBoard"]
+[node name="Columns" type="HBoxContainer" parent="Root/VBox/Body/TreeBoard"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = 8
+
+[node name="InspectorPanel" type="PanelContainer" parent="Root/VBox/Body"]
+custom_minimum_size = Vector2(330, 0)
+layout_mode = 2
+theme_type_variation = &"CyberPanel"
+
+[node name="VBox" type="VBoxContainer" parent="Root/VBox/Body/InspectorPanel"]
+layout_mode = 2
 theme_override_constants/separation = 10
 
-[node name="OffenseCol" type="VBoxContainer" parent="Panel/Margin/VBox/Body/TreeScroll/TreeBoard/Columns"]
+[node name="IconCenter" type="CenterContainer" parent="Root/VBox/Body/InspectorPanel/VBox"]
 layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 8
 
-[node name="ColTitle" type="Label" parent="Panel/Margin/VBox/Body/TreeScroll/TreeBoard/Columns/OffenseCol"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.3, 0.85, 1, 1)
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 11
-theme_override_styles/normal = SubResource("StyleBoxFlat_col_offense")
-text = "// BUS_01: ОЗБРОЄННЯ"
-horizontal_alignment = 1
-
-[node name="NodesVBox" type="VBoxContainer" parent="Panel/Margin/VBox/Body/TreeScroll/TreeBoard/Columns/OffenseCol"]
-layout_mode = 2
-theme_override_constants/separation = 8
-
-[node name="DefenseCol" type="VBoxContainer" parent="Panel/Margin/VBox/Body/TreeScroll/TreeBoard/Columns"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 8
-
-[node name="ColTitle" type="Label" parent="Panel/Margin/VBox/Body/TreeScroll/TreeBoard/Columns/DefenseCol"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.25, 0.95, 0.55, 1)
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 11
-theme_override_styles/normal = SubResource("StyleBoxFlat_col_defense")
-text = "// BUS_02: ЗАХИСТ"
-horizontal_alignment = 1
-
-[node name="NodesVBox" type="VBoxContainer" parent="Panel/Margin/VBox/Body/TreeScroll/TreeBoard/Columns/DefenseCol"]
-layout_mode = 2
-theme_override_constants/separation = 8
-
-[node name="OverclockCol" type="VBoxContainer" parent="Panel/Margin/VBox/Body/TreeScroll/TreeBoard/Columns"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 8
-
-[node name="ColTitle" type="Label" parent="Panel/Margin/VBox/Body/TreeScroll/TreeBoard/Columns/OverclockCol"]
-layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.65, 0.25, 1)
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 11
-theme_override_styles/normal = SubResource("StyleBoxFlat_col_overclock")
-text = "// BUS_03: ОВЕРКЛОК"
-horizontal_alignment = 1
-
-[node name="NodesVBox" type="VBoxContainer" parent="Panel/Margin/VBox/Body/TreeScroll/TreeBoard/Columns/OverclockCol"]
-layout_mode = 2
-theme_override_constants/separation = 8
-
-[node name="SynergiesCol" type="VBoxContainer" parent="Panel/Margin/VBox/Body/TreeScroll/TreeBoard/Columns"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 8
-
-[node name="ColTitle" type="Label" parent="Panel/Margin/VBox/Body/TreeScroll/TreeBoard/Columns/SynergiesCol"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.95, 0.45, 1, 1)
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 11
-theme_override_styles/normal = SubResource("StyleBoxFlat_col_synergies")
-text = "// BUS_04: СИНЕРГІЇ"
-horizontal_alignment = 1
-
-[node name="NodesVBox" type="VBoxContainer" parent="Panel/Margin/VBox/Body/TreeScroll/TreeBoard/Columns/SynergiesCol"]
-layout_mode = 2
-theme_override_constants/separation = 8
-
-[node name="InspectorPanel" type="PanelContainer" parent="Panel/Margin/VBox/Body"]
-custom_minimum_size = Vector2(340, 0)
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_stretch_ratio = 1.0
-theme_override_styles/panel = SubResource("StyleBoxFlat_inspector")
-
-[node name="InspectorMargin" type="MarginContainer" parent="Panel/Margin/VBox/Body/InspectorPanel"]
-layout_mode = 2
-theme_override_constants/margin_left = 14
-theme_override_constants/margin_top = 12
-theme_override_constants/margin_right = 14
-theme_override_constants/margin_bottom = 12
-
-[node name="InspectorVBox" type="VBoxContainer" parent="Panel/Margin/VBox/Body/InspectorPanel/InspectorMargin"]
-layout_mode = 2
-theme_override_constants/separation = 8
-
-[node name="InspectorHeader" type="Label" parent="Panel/Margin/VBox/Body/InspectorPanel/InspectorMargin/InspectorVBox"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.2, 0.85, 1, 1)
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 12
-text = "// NEURAL_INSPECTOR_DECK //"
-horizontal_alignment = 1
-
-[node name="IconHBox" type="HBoxContainer" parent="Panel/Margin/VBox/Body/InspectorPanel/InspectorMargin/InspectorVBox"]
-layout_mode = 2
-alignment = 1
-
-[node name="InspectorIcon" type="TextureRect" parent="Panel/Margin/VBox/Body/InspectorPanel/InspectorMargin/InspectorVBox/IconHBox"]
-custom_minimum_size = Vector2(48, 48)
+[node name="InspectorIcon" type="TextureRect" parent="Root/VBox/Body/InspectorPanel/VBox/IconCenter"]
+custom_minimum_size = Vector2(84, 84)
 layout_mode = 2
 expand_mode = 1
 stretch_mode = 5
 
-[node name="TechName" type="Label" parent="Panel/Margin/VBox/Body/InspectorPanel/InspectorMargin/InspectorVBox"]
+[node name="TechName" type="Label" parent="Root/VBox/Body/InspectorPanel/VBox"]
 layout_mode = 2
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 14
-text = "ОБЕРІТЬ ТЕХНОЛОГІЮ"
+theme_type_variation = &"HeadingLabel"
+text = "Назва"
 horizontal_alignment = 1
 autowrap_mode = 3
 
-[node name="TechCodeBadge" type="Label" parent="Panel/Margin/VBox/Body/InspectorPanel/InspectorMargin/InspectorVBox"]
+[node name="Pips" type="Control" parent="Root/VBox/Body/InspectorPanel/VBox"]
+custom_minimum_size = Vector2(0, 10)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.4, 0.8, 1, 0.8)
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 10
-text = "ID: [SYS_READY]"
-horizontal_alignment = 1
 
-[node name="TierPipsLabel" type="Label" parent="Panel/Margin/VBox/Body/InspectorPanel/InspectorMargin/InspectorVBox"]
+[node name="StatusRow" type="HBoxContainer" parent="Root/VBox/Body/InspectorPanel/VBox"]
 layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.85, 0.3, 1)
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 12
-text = "[■■■□□]"
-horizontal_alignment = 1
-
-[node name="TechStatus" type="Label" parent="Panel/Margin/VBox/Body/InspectorPanel/InspectorMargin/InspectorVBox"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.3, 1, 0.5, 1)
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 10
-text = "[STATE: READY]"
-horizontal_alignment = 1
-
-[node name="TechDesc" type="Label" parent="Panel/Margin/VBox/Body/InspectorPanel/InspectorMargin/InspectorVBox"]
-layout_mode = 2
-size_flags_vertical = 3
-theme_override_colors/font_color = Color(0.85, 0.9, 0.95, 1)
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 10
-text = "Натисніть або наведіть на будь-яку технологію матриці для детального сканування архітектури та перегляду синергій."
-autowrap_mode = 3
-
-[node name="TechNextBonus" type="Label" parent="Panel/Margin/VBox/Body/InspectorPanel/InspectorMargin/InspectorVBox"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.3, 1, 0.6, 1)
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 10
-text = "⚡ НАСТУПНИЙ РІВЕНЬ: N/A"
-autowrap_mode = 3
-
-[node name="TechSynergiesHint" type="Label" parent="Panel/Margin/VBox/Body/InspectorPanel/InspectorMargin/InspectorVBox"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.9, 0.5, 1, 1)
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 9
-text = "✨ ВІДКРИВАЄ СИНЕРГІЇ: N/A"
-autowrap_mode = 3
-
-[node name="UpgradeActionBtn" type="Button" parent="Panel/Margin/VBox/Body/InspectorPanel/InspectorMargin/InspectorVBox"]
-custom_minimum_size = Vector2(0, 40)
-layout_mode = 2
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 11
-theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
-theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
-text = "[ ⚡ ВСТАНОВИТИ ПРОШИВКУ ]"
-
-[node name="Footer" type="HBoxContainer" parent="Panel/Margin/VBox"]
-layout_mode = 2
+theme_override_constants/separation = 8
 alignment = 1
 
-[node name="CloseBtn" type="Button" parent="Panel/Margin/VBox/Footer"]
-custom_minimum_size = Vector2(320, 38)
+[node name="StatusIcon" type="TextureRect" parent="Root/VBox/Body/InspectorPanel/VBox/StatusRow"]
+custom_minimum_size = Vector2(18, 18)
 layout_mode = 2
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_fonts/font = ExtResource("2_font")
+size_flags_vertical = 4
+expand_mode = 1
+stretch_mode = 5
+
+[node name="StatusLabel" type="Label" parent="Root/VBox/Body/InspectorPanel/VBox/StatusRow"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "Статус"
+
+[node name="Rule" type="ColorRect" parent="Root/VBox/Body/InspectorPanel/VBox"]
+custom_minimum_size = Vector2(0, 1)
+layout_mode = 2
+color = Color(0.988, 0.933, 0.039, 0.2)
+
+[node name="TechDesc" type="Label" parent="Root/VBox/Body/InspectorPanel/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "Опис"
+autowrap_mode = 3
+
+[node name="NextRow" type="HBoxContainer" parent="Root/VBox/Body/InspectorPanel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="NextIcon" type="TextureRect" parent="Root/VBox/Body/InspectorPanel/VBox/NextRow"]
+custom_minimum_size = Vector2(18, 18)
+layout_mode = 2
+size_flags_vertical = 0
+texture = ExtResource("6_upgrade")
+expand_mode = 1
+stretch_mode = 5
+self_modulate = Color(0.988, 0.933, 0.039, 1)
+
+[node name="TechNext" type="Label" parent="Root/VBox/Body/InspectorPanel/VBox/NextRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.988, 0.933, 0.039, 1)
 theme_override_font_sizes/font_size = 13
-theme_override_styles/normal = SubResource("StyleBoxFlat_btn")
-theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
-text = "ПОВЕРНУТИСЯ ДО БОЮ [TAB / ESC]"
+text = "Наступний рівень"
+autowrap_mode = 3
+
+[node name="LinksTitle" type="Label" parent="Root/VBox/Body/InspectorPanel/VBox"]
+layout_mode = 2
+theme_type_variation = &"DimLabel"
+text = "СИНЕРГІЇ"
+
+[node name="LinksRow" type="HFlowContainer" parent="Root/VBox/Body/InspectorPanel/VBox"]
+layout_mode = 2
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+
+[node name="Spacer" type="Control" parent="Root/VBox/Body/InspectorPanel/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="UpgradeActionBtn" type="Button" parent="Root/VBox/Body/InspectorPanel/VBox"]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
+theme_type_variation = &"PrimaryButton"
+text = "ВСТАНОВИТИ"
+icon = ExtResource("6_upgrade")
+
+[node name="CRT" type="ColorRect" parent="."]
+material = SubResource("ShaderMaterial_crt")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2

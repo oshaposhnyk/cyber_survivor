@@ -1,6 +1,6 @@
 extends CharacterBody2D
 
-# Combat Android ARC-01 (Mecha Vanguard)
+# Player ship ARC-01
 
 @export var base_speed: float = 230.0
 @export var base_max_hp: float = 100.0
@@ -16,6 +16,12 @@ var shield_recharge_rate: float = 25.0
 var damage_reduction: float = 0.0
 var hp_regen_rate: float = 0.0
 
+# Tank doctrine contact spikes; enemies read this when they ram the ship
+var thorns_base: float = 0.0
+var thorns_dps: float:
+	get:
+		return thorns_base * (1.0 + GameManager.time_survived / 120.0)
+
 var is_thrusting: bool = false
 var thruster_time: float = 0.0
 
@@ -25,8 +31,15 @@ var missile_pod_toggle: int = 0
 
 # Side hull damage spark bursts
 var damage_sparks: Array[Dictionary] = []
+# Contact damage arrives every frame from every touching enemy; hit FX are rate-limited
+const HIT_FX_INTERVAL := 0.08
+const MAX_DAMAGE_SPARKS := 72
+var hit_fx_cooldown: float = 0.0
+var hit_flash: float = 0.0
 
 func spawn_side_damage_sparks(local_origin: Vector2, local_dir: Vector2) -> void:
+	if damage_sparks.size() >= MAX_DAMAGE_SPARKS:
+		return
 	for i in range(12):
 		var ang = local_dir.angle() + randf_range(-0.8, 0.8)
 		var spd = randf_range(80.0, 220.0)
@@ -54,6 +67,20 @@ func _draw() -> void:
 		draw_line(port, port + Vector2(0, plume_len * 0.5), core_col, plume_width * 0.4)
 		draw_circle(port, plume_width * 0.8, outer_col)
 		
+	# Glitch field: jittering dashed ring, drawn unrotated
+	if glitch_radius > 0.0:
+		draw_set_transform(Vector2.ZERO, -rotation, Vector2.ONE)
+		var g = Color(0.2, 1.0, 0.55, 0.35)
+		var segs = 28
+		for i in range(segs):
+			if (i + int(glitch_phase * 10.0)) % 3 == 0:
+				continue
+			var a0 = TAU * i / segs + glitch_phase * 0.4
+			var jitter = randf_range(-3.0, 3.0) if randf() < 0.15 else 0.0
+			draw_arc(Vector2.ZERO, glitch_radius + jitter, a0, a0 + TAU / segs * 0.8, 4, g, 2.0)
+		draw_circle(Vector2.ZERO, glitch_radius, Color(0.2, 1.0, 0.55, 0.04))
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	
 	# 2. Side Hull Breach Sparks
 	for s in damage_sparks:
 		if s["life"] > 0.0:
@@ -67,9 +94,16 @@ var blaster_timer: float = 0.0
 var missile_timer: float = 0.0
 var railgun_timer: float = 0.0
 var emp_timer: float = 0.0
+var virus_timer: float = 1.0
+var glitch_timer: float = 0.0
+var glitch_radius: float = 0.0
+var glitch_phase: float = 0.0
+var turret_timer: float = 0.5
+var mine_timer: float = 1.0
 
 # Active Orbital Drones list
 var spawned_drones: Array[Node2D] = []
+var spawned_turrets: Array[Node2D] = []
 
 @onready var sprite: Sprite2D = $Sprite2D
 @onready var magnet_area: Area2D = $MagnetArea
@@ -88,9 +122,10 @@ func _ready() -> void:
 func apply_upgrades() -> void:
 	# 1. Armor & Health
 	var armor_lvl = GameManager.get_skill_level("armor")
-	max_hp = base_max_hp + armor_lvl * 35.0
+	max_hp = (base_max_hp + armor_lvl * 35.0) * GameManager.doctrine_mod("hp")
 	current_hp = min(current_hp, max_hp)
 	damage_reduction = armor_lvl * 0.12
+	thorns_base = GameManager.doctrine_mod("thorns", 0.0)
 	
 	# 2. Shield
 	var shield_lvl = GameManager.get_skill_level("shield")
@@ -136,6 +171,7 @@ func update_orbital_drones() -> void:
 		var d = drone_scene.instantiate()
 		var init_angle = (TAU / drone_count) * i
 		d.setup(self, init_angle, is_bastion)
+		d.damage_mult = GameManager.doctrine_mod("dmg")
 		get_parent().call_deferred("add_child", d)
 		spawned_drones.append(d)
 
@@ -147,6 +183,12 @@ func _physics_process(delta: float) -> void:
 	handle_shield_recharge(delta)
 	handle_regen(delta)
 	handle_weapons(delta)
+	
+	hit_fx_cooldown -= delta
+	if hit_flash > 0.0:
+		hit_flash -= delta
+		if hit_flash <= 0.0 and sprite:
+			sprite.modulate = Color.WHITE
 	
 	# Update side damage sparks
 	if damage_sparks.size() > 0:
@@ -167,7 +209,7 @@ func handle_movement(delta: float) -> void:
 	input_vec = input_vec.normalized()
 	
 	var speed_lvl = GameManager.get_skill_level("speed")
-	var move_speed = base_speed * (1.0 + speed_lvl * 0.18)
+	var move_speed = base_speed * (1.0 + speed_lvl * 0.18) * GameManager.doctrine_mod("speed")
 	
 	velocity = input_vec * move_speed
 	move_and_slide()
@@ -201,6 +243,8 @@ func handle_regen(delta: float) -> void:
 func handle_weapons(delta: float) -> void:
 	var cd_lvl = GameManager.get_skill_level("cooldown")
 	var cd_mult = pow(0.88, cd_lvl)
+	# Doctrine fire-rate change hits ship weapons only, not turrets and mines
+	var ship_cd = cd_mult * GameManager.doctrine_mod("cd")
 	
 	# 1. Pulse Blaster
 	var blaster_lvl = GameManager.get_skill_level("blaster")
@@ -208,7 +252,7 @@ func handle_weapons(delta: float) -> void:
 		blaster_timer -= delta
 		if blaster_timer <= 0.0:
 			var base_cd = max(0.25, 0.65 - blaster_lvl * 0.06)
-			blaster_timer = base_cd * cd_mult
+			blaster_timer = base_cd * ship_cd
 			fire_blaster(blaster_lvl)
 			
 	# 2. Micro Missiles
@@ -216,7 +260,7 @@ func handle_weapons(delta: float) -> void:
 	if missile_lvl > 0:
 		missile_timer -= delta
 		if missile_timer <= 0.0:
-			missile_timer = max(0.9, 2.0 - missile_lvl * 0.2) * cd_mult
+			missile_timer = max(0.9, 2.0 - missile_lvl * 0.2) * ship_cd
 			fire_missiles(missile_lvl)
 			
 	# 3. Railgun Piercer
@@ -224,7 +268,7 @@ func handle_weapons(delta: float) -> void:
 	if railgun_lvl > 0:
 		railgun_timer -= delta
 		if railgun_timer <= 0.0:
-			railgun_timer = max(1.5, 3.4 - railgun_lvl * 0.35) * cd_mult
+			railgun_timer = max(1.5, 3.4 - railgun_lvl * 0.35) * ship_cd
 			fire_railgun(railgun_lvl)
 			
 	# 4. EMP Shockwave
@@ -232,22 +276,44 @@ func handle_weapons(delta: float) -> void:
 	if emp_lvl > 0:
 		emp_timer -= delta
 		if emp_timer <= 0.0:
-			emp_timer = max(3.5, 8.5 - emp_lvl * 1.1) * cd_mult
+			emp_timer = max(3.5, 8.5 - emp_lvl * 1.1) * ship_cd
 			fire_emp(emp_lvl)
+	
+	# 5. Hacking branch
+	var virus_lvl = GameManager.get_skill_level("virus")
+	if virus_lvl > 0:
+		virus_timer -= delta
+		if virus_timer <= 0.0:
+			virus_timer = 2.4 * ship_cd
+			fire_virus(virus_lvl)
+	
+	var glitch_lvl = GameManager.get_skill_level("glitch_field")
+	glitch_radius = 0.0
+	if glitch_lvl > 0:
+		glitch_radius = 150.0 * (1.0 + 0.2 * (glitch_lvl - 1))
+		glitch_phase += delta
+		glitch_timer -= delta
+		if glitch_timer <= 0.0:
+			glitch_timer = 0.25
+			pulse_glitch_field(glitch_lvl)
+
+	# 6. Engineer branch
+	var turret_lvl = GameManager.get_skill_level("turret")
+	if turret_lvl > 0:
+		turret_timer -= delta
+		if turret_timer <= 0.0:
+			turret_timer = 4.0 * cd_mult
+			deploy_turret(turret_lvl)
+
+	var mines_lvl = GameManager.get_skill_level("mines")
+	if mines_lvl > 0:
+		mine_timer -= delta
+		if mine_timer <= 0.0:
+			mine_timer = 2.6 * cd_mult
+			drop_mines(mines_lvl)
 
 func find_nearest_enemies(count: int = 1) -> Array[Node2D]:
-	var enemies = get_tree().get_nodes_in_group("enemies")
-	var valid_enemies: Array[Dictionary] = []
-	for enemy in enemies:
-		if is_instance_valid(enemy):
-			var dist = global_position.distance_to(enemy.global_position)
-			valid_enemies.append({"enemy": enemy, "dist": dist})
-	valid_enemies.sort_custom(func(a, b): return a["dist"] < b["dist"])
-	
-	var res: Array[Node2D] = []
-	for i in range(min(count, valid_enemies.size())):
-		res.append(valid_enemies[i]["enemy"])
-	return res
+	return EnemyRegistry.nearest(global_position, count)
 
 func fire_blaster(lvl: int) -> void:
 	var target = find_nearest_enemies(1)
@@ -256,7 +322,7 @@ func fire_blaster(lvl: int) -> void:
 		shoot_dir = (target[0].global_position - global_position).normalized()
 		
 	var bolt_scene = preload("res://scenes/weapons/blaster_bolt.tscn")
-	var damage = 22.0 + lvl * 6.0
+	var damage = (22.0 + lvl * 6.0) * GameManager.doctrine_mod("dmg")
 	var is_storm = GameManager.is_synergy_active("plasma_storm")
 	var conductor_lvl = GameManager.get_skill_level("conductor")
 	var can_chain = is_storm or conductor_lvl > 0
@@ -297,7 +363,7 @@ func fire_missiles(lvl: int) -> void:
 	var is_valkyrie = GameManager.is_synergy_active("valkyrie_swarm")
 	var missile_scene = preload("res://scenes/weapons/missile.tscn")
 	var count = lvl + 1
-	var damage = 45.0 + lvl * 15.0
+	var damage = (45.0 + lvl * 15.0) * GameManager.doctrine_mod("dmg")
 	var fwd = Vector2.UP.rotated(rotation)
 	
 	for i in range(count):
@@ -327,31 +393,94 @@ func fire_railgun(lvl: int) -> void:
 	var nose_emitter = global_position + Vector2(0, -24).rotated(rotation)
 	var rail_scene = preload("res://scenes/weapons/railgun_beam.tscn")
 	var rail = rail_scene.instantiate()
-	var dmg = 120.0 + lvl * 45.0
-	get_parent().add_child(rail)
+	var dmg = (120.0 + lvl * 45.0) * GameManager.doctrine_mod("dmg")
+	# setup() before add_child(): _ready() fires the beam, so it needs position and direction first
 	rail.setup(nose_emitter, dir, dmg)
+	get_parent().add_child(rail)
 
 func fire_emp(lvl: int, force_apocalypse: bool = false) -> void:
 	var is_apocalypse = force_apocalypse or GameManager.is_synergy_active("emp_apocalypse")
 	var emp_scene = preload("res://scenes/weapons/emp_wave.tscn")
 	var emp = emp_scene.instantiate()
 	var rad = 220.0 + lvl * 40.0
-	var dmg = 50.0 + lvl * 20.0
+	var dmg = (50.0 + lvl * 20.0) * GameManager.doctrine_mod("dmg")
 	var stun = 2.0 + lvl * 0.5
 	emp.setup(global_position, rad, dmg, stun, is_apocalypse)
 	get_parent().add_child(emp)
+	# Black ICE synergy: the wave carries the virus
+	if GameManager.is_synergy_active("black_ice"):
+		var vdps = virus_dps(GameManager.get_skill_level("virus"))
+		for e in EnemyRegistry.in_radius(global_position, rad * (2.5 if is_apocalypse else 1.0)):
+			if e.has_method("infect"):
+				e.infect(5.0, vdps)
+
+func virus_dps(lvl: int) -> float:
+	return (5.0 + 4.0 * lvl) * (1.0 + 0.25 * (lvl - 1)) * (1.0 + GameManager.time_survived / 120.0) * GameManager.doctrine_mod("dot")
+
+func fire_virus(lvl: int) -> void:
+	var dps = virus_dps(lvl)
+	var targets = lvl + 1 + int(GameManager.doctrine_mod("infect", 0.0))
+	for e in EnemyRegistry.nearest(global_position, targets, 650.0):
+		if e.has_method("infect"):
+			e.infect(5.0, dps)
+
+func pulse_glitch_field(lvl: int) -> void:
+	var mult = 0.75 - 0.1 * (lvl - 1)
+	var dmg = (3.0 + 3.0 * lvl) * (1.0 + GameManager.time_survived / 150.0) * GameManager.doctrine_mod("dot")
+	for e in EnemyRegistry.in_radius(global_position, glitch_radius):
+		if e.has_method("apply_slow"):
+			e.apply_slow(0.35, mult)
+			e.apply_dot(dmg)
+
+func deploy_turret(lvl: int) -> void:
+	spawned_turrets = spawned_turrets.filter(func(t): return is_instance_valid(t))
+	if spawned_turrets.size() >= lvl + int(GameManager.doctrine_mod("turret_extra", 0.0)):
+		return
+	var turret = preload("res://scenes/weapons/sentry_turret.tscn").instantiate()
+	var dmg = (14.0 + 4.0 * lvl) * GameManager.doctrine_mod("turret_dmg")
+	var life = (12.0 + 2.0 * lvl) * GameManager.doctrine_mod("turret_life")
+	turret.setup(global_position, dmg, life, GameManager.get_skill_level("tesla"), GameManager.get_skill_level("missile_battery"), GameManager.is_synergy_active("fortress"))
+	get_parent().add_child(turret)
+	spawned_turrets.append(turret)
+
+func drop_mines(lvl: int) -> void:
+	var count = mini(lvl, ProximityMine.MAX_MINES - ProximityMine.live_count)
+	if count <= 0:
+		return
+	var emp = GameManager.is_synergy_active("emp_mines")
+	var dmg = 40.0 * (1.0 + 0.25 * (lvl - 1)) * GameManager.doctrine_mod("turret_dmg")
+	var radius = 75.0 * (1.4 if emp else 1.0)
+	var mine_scene = preload("res://scenes/weapons/proximity_mine.tscn")
+	# Drop from the stern, spread sideways
+	var back = Vector2.DOWN.rotated(rotation) * 30.0
+	var side = Vector2.RIGHT.rotated(rotation)
+	for i in range(count):
+		var mine = mine_scene.instantiate()
+		mine.setup(global_position + back + side * (i - (count - 1) / 2.0) * 26.0, dmg, radius, 1.5 if emp else 0.0)
+		get_parent().add_child(mine)
+
+func near_turret(radius: float) -> bool:
+	for t in spawned_turrets:
+		if is_instance_valid(t) and global_position.distance_squared_to(t.global_position) <= radius * radius:
+			return true
+	return false
 
 func take_damage(amount: float, source_pos: Vector2 = Vector2.ZERO) -> void:
-	var actual_damage = amount * (1.0 - damage_reduction)
+	var actual_damage = amount * (1.0 - damage_reduction) * GameManager.doctrine_mod("taken")
+	# Fortress synergy: turret perimeter shields the hull
+	if GameManager.is_synergy_active("fortress") and near_turret(170.0):
+		actual_damage *= 0.7
 	shield_timer = shield_recharge_delay
 	
-	# Spawn side hull sparks where the impact came from
-	if source_pos != Vector2.ZERO:
-		var local_dir = (to_local(source_pos)).normalized()
-		var impact_loc = local_dir * 18.0
-		spawn_side_damage_sparks(impact_loc, local_dir)
-	else:
-		spawn_side_damage_sparks(Vector2(randf_range(-15, 15), randf_range(-15, 15)), Vector2.UP.rotated(randf() * TAU))
+	# Spawn side hull sparks where the impact came from (rate-limited)
+	var show_fx = hit_fx_cooldown <= 0.0
+	if show_fx:
+		hit_fx_cooldown = HIT_FX_INTERVAL
+		if source_pos != Vector2.ZERO:
+			var local_dir = (to_local(source_pos)).normalized()
+			spawn_side_damage_sparks(local_dir * 18.0, local_dir)
+		else:
+			spawn_side_damage_sparks(Vector2(randf_range(-15, 15), randf_range(-15, 15)), Vector2.UP.rotated(randf() * TAU))
 	
 	# Shield absorbs first
 	if current_shield > 0.0:
@@ -369,9 +498,11 @@ func take_damage(amount: float, source_pos: Vector2 = Vector2.ZERO) -> void:
 				
 	if actual_damage > 0.0:
 		current_hp -= actual_damage
-		flash_hit()
-		
-	GameManager.player_damaged.emit(current_hp, max_hp, current_shield, max_shield)
+		if show_fx:
+			flash_hit()
+	
+	if show_fx or current_hp <= 0.0:
+		GameManager.player_damaged.emit(current_hp, max_hp, current_shield, max_shield)
 	
 	if current_hp <= 0.0:
 		die()
@@ -388,8 +519,7 @@ func heal(amount: float) -> void:
 func flash_hit() -> void:
 	if sprite:
 		sprite.modulate = Color(3.0, 0.4, 0.4)
-		var tween = create_tween()
-		tween.tween_property(sprite, "modulate", Color.WHITE, 0.12)
+		hit_flash = 0.12
 
 func die() -> void:
 	GameManager.trigger_game_over(false)

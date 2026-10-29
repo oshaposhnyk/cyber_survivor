@@ -2,6 +2,10 @@
 
 [ext_resource type="Script" path="res://scenes/weapons/blaster_bolt.gd" id="1_script"]
 [ext_resource type="Texture2D" path="res://assets/sprites/weapons/blaster_bolt.png" id="2_texture"]
+[ext_resource type="Texture2D" path="res://assets/sprites/fx/bolt_trace.png" id="3_glow"]
+
+[sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_add"]
+blend_mode = 1
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_bolt"]
 radius = 5.0
@@ -9,9 +13,15 @@ height = 24.0
 
 [node name="BlasterBolt" type="Area2D"]
 z_index = 10
+material = SubResource("CanvasItemMaterial_add")
 collision_layer = 4
 collision_mask = 2
 script = ExtResource("1_script")
+
+[node name="Glow" type="Sprite2D" parent="."]
+material = SubResource("CanvasItemMaterial_add")
+scale = Vector2(0.55, 0.62)
+texture = ExtResource("3_glow")
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
 texture = ExtResource("2_texture")

@@ -56,38 +56,49 @@ func _ready() -> void:
 	load_sounds()
 	play_music()
 
+const MUSIC_DB := -12.0
+const MUSIC_FADE := 2.0
+
 func _process(delta: float) -> void:
+	_update_music_fade()
 	if scrap_combo_timer > 0.0:
 		scrap_combo_timer -= delta
 		if scrap_combo_timer <= 0.0:
 			scrap_combo = 0
 
 func load_sounds() -> void:
+	# Short SFX are WAV (Godot's recommended format for one-shots; low decode cost on web).
+	# A value is one path or an Array of variant paths; play_sfx picks a random variant.
+	# Sources and licences: assets/audio/CREDITS.txt
 	var files = {
-		"laser": "res://assets/audio/laser_fire.ogg",
-		"railgun": "res://assets/audio/railgun_fire.ogg",
-		"missile": "res://assets/audio/missile_launch.ogg",
-		"scrap": "res://assets/audio/scrap_pickup.ogg",
-		"level_up": "res://assets/audio/level_up.ogg",
-		"explosion": "res://assets/audio/explosion.ogg",
-		"heavy_explosion": "res://assets/audio/heavy_explosion.ogg",
-		"emp_blast": "res://assets/audio/emp_blast.ogg",
-		"shield_hit": "res://assets/audio/shield_hit.ogg",
-		"upgrade_select": "res://assets/audio/upgrade_select.ogg",
-		"ui_hover": "res://assets/audio/ui_hover.ogg",
-		"victory": "res://assets/audio/victory.ogg",
-		"game_over": "res://assets/audio/game_over.ogg"
+		"laser": ["res://assets/audio/laser_fire.wav", "res://assets/audio/laser_fire_2.wav", "res://assets/audio/laser_fire_3.wav"],
+		"railgun": "res://assets/audio/railgun_fire.wav",
+		"missile": "res://assets/audio/missile_launch.wav",
+		"scrap": ["res://assets/audio/scrap_pickup.wav", "res://assets/audio/scrap_pickup_2.wav"],
+		"level_up": "res://assets/audio/level_up.wav",
+		"explosion": ["res://assets/audio/explosion.wav", "res://assets/audio/explosion_2.wav", "res://assets/audio/explosion_3.wav"],
+		"heavy_explosion": "res://assets/audio/heavy_explosion.wav",
+		"emp_blast": "res://assets/audio/emp_blast.wav",
+		"shield_hit": "res://assets/audio/shield_hit.wav",
+		"upgrade_select": "res://assets/audio/upgrade_select.wav",
+		"ui_hover": "res://assets/audio/ui_hover.wav",
+		"victory": "res://assets/audio/victory.wav",
+		"game_over": "res://assets/audio/game_over.wav"
 	}
 	for key in files.keys():
-		var path = files[key]
-		if ResourceLoader.exists(path):
-			sound_streams[key] = load(path)
+		var paths: Array = files[key] if files[key] is Array else [files[key]]
+		var streams: Array = []
+		for path in paths:
+			if ResourceLoader.exists(path):
+				streams.append(load(path))
+		if not streams.is_empty():
+			sound_streams[key] = streams
 		last_play_times[key] = -999.0
 
 func play_music() -> void:
 	if music_muted:
 		return
-	var bgm_path = "res://assets/audio/bgm_cyber_loop.mp3"
+	var bgm_path = "res://assets/audio/bgm_cyberpunk_sonata.mp3"
 	if ResourceLoader.exists(bgm_path):
 		var stream = load(bgm_path)
 		bgm_player.stream = stream
@@ -98,6 +109,15 @@ func play_music() -> void:
 func _on_music_finished() -> void:
 	if not music_muted and bgm_player.stream:
 		bgm_player.play()
+
+# The track is not built to loop: fade out over its last seconds and fade in after restart
+func _update_music_fade() -> void:
+	if not bgm_player.playing or bgm_player.stream == null:
+		return
+	var pos = bgm_player.get_playback_position()
+	var left = bgm_player.stream.get_length() - pos
+	var k = clampf(min(pos, left) / MUSIC_FADE, 0.0, 1.0)
+	bgm_player.volume_db = lerpf(-40.0, MUSIC_DB, k)
 
 func play_sfx(sound_name: String, pitch_rnd: float = 0.08, volume_offset_db: float = 0.0) -> void:
 	if sfx_muted:
@@ -118,7 +138,7 @@ func play_sfx(sound_name: String, pitch_rnd: float = 0.08, volume_offset_db: flo
 	var player = sfx_players[sfx_index]
 	sfx_index = (sfx_index + 1) % max_sfx_channels
 	
-	player.stream = sound_streams[sound_name]
+	player.stream = sound_streams[sound_name].pick_random()
 	
 	# Scrap combo pitch scaling
 	var base_pitch: float = 1.0

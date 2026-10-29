@@ -6,22 +6,24 @@ extends Control
 @onready var music_btn: Button = $TopControls/MusicBtn
 @onready var sfx_btn: Button = $TopControls/SFXBtn
 @onready var info_dialog: PanelContainer = $InfoDialog
-@onready var close_info_btn: Button = $InfoDialog/Margin/VBox/CloseInfoBtn
+@onready var dialog_title: Label = $InfoDialog/Margin/VBox/Header/DialogTitle
+@onready var close_info_btn: Button = $InfoDialog/Margin/VBox/Header/CloseInfoBtn
 @onready var info_text: RichTextLabel = $InfoDialog/Margin/VBox/InfoText
+@onready var ship: Sprite2D = $Ship
+
+const ENEMY_SPRITES = [
+	"res://assets/sprites/enemies/scout_drone.png",
+	"res://assets/sprites/enemies/assault_droid.png",
+	"res://assets/sprites/enemies/kamikaze_drone.png",
+	"res://assets/sprites/enemies/spider_bot.png",
+	"res://assets/sprites/enemies/heavy_mech.png",
+]
 
 var stars: Array[Dictionary] = []
-var nebulae: Array[Dictionary] = []
+var swarm: Array[Dictionary] = []
+var enemy_textures: Array[Texture2D] = []
 var time_elapsed: float = 0.0
-
-const BOOT_LOGS = [
-	"0x001A [BOOT] :: INITIALIZE_KERNEL_v4.7",
-	"0x004F [ARCH] :: WASM_COMPATIBILITY_OK",
-	"0x008E [ORBIT] :: CONNECTED_TO_CORE",
-	"0x011C [ALERT] :: CORRUPTION_DETECTED",
-	"0x017A [SWARM] :: SIGNATURES: 1,500+",
-	"0x021F [PILOT] :: ARC-01_INITIALIZING...",
-	"0x02FE [ROOT] :: ACCESS_GRANTED // READY"
-]
+var ship_base: Vector2
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -31,134 +33,150 @@ func _ready() -> void:
 	close_info_btn.pressed.connect(func(): info_dialog.visible = false)
 	music_btn.pressed.connect(_on_toggle_music)
 	sfx_btn.pressed.connect(_on_toggle_sfx)
+	for b in [start_btn, info_btn, credits_btn, music_btn, sfx_btn, close_info_btn]:
+		b.mouse_entered.connect(func(): AudioManager.play_sfx("ui_hover", 0.05, -8.0))
 	info_dialog.visible = false
-	
+	ship_base = ship.position
+
+	_sync_audio_icons()
 	init_space_fx()
 	AudioManager.play_music()
+	start_btn.grab_focus()
 
 func init_space_fx() -> void:
-	for i in range(120):
+	for p in ENEMY_SPRITES:
+		if ResourceLoader.exists(p):
+			enemy_textures.append(load(p))
+	for i in range(110):
 		stars.append({
 			"pos": Vector2(randf_range(0, 1280), randf_range(0, 720)),
-			"speed": randf_range(10.0, 45.0),
-			"size": randf_range(1.0, 2.8),
-			"alpha": randf_range(0.3, 0.9),
-			"color": Color(0.85, 0.95, 1.0) if randf() < 0.7 else Color(1.0, 0.85, 0.5)
+			"speed": randf_range(20.0, 90.0),
+			"size": randf_range(1.0, 2.4),
+			"alpha": randf_range(0.25, 0.8),
 		})
-		
-	nebulae = [
-		{"pos": Vector2(250, 180), "radius": 320.0, "color": Color(0.08, 0.02, 0.18, 0.28)},
-		{"pos": Vector2(1000, 520), "radius": 420.0, "color": Color(0.02, 0.08, 0.22, 0.32)},
-		{"pos": Vector2(640, 360), "radius": 350.0, "color": Color(0.01, 0.12, 0.16, 0.22)}
-	]
+	for i in range(14):
+		swarm.append(_new_swarm_unit(true))
+
+func _new_swarm_unit(anywhere: bool) -> Dictionary:
+	return {
+		"pos": Vector2(randf_range(560, 1300), randf_range(-60, 760) if anywhere else -80.0),
+		"speed": randf_range(30.0, 70.0),
+		"scale": randf_range(0.35, 0.7),
+		"tex": enemy_textures.pick_random() if enemy_textures.size() > 0 else null,
+	}
 
 func _process(delta: float) -> void:
 	time_elapsed += delta
 	for s in stars:
 		s["pos"].y += s["speed"] * delta
-		s["pos"].x -= (s["speed"] * 0.3) * delta
 		if s["pos"].y > 720.0:
-			s["pos"].y = 0.0
-			s["pos"].x = randf_range(0, 1280)
-		if s["pos"].x < 0.0:
-			s["pos"].x = 1280.0
+			s["pos"] = Vector2(randf_range(0, 1280), 0.0)
+	for i in swarm.size():
+		swarm[i]["pos"].y += swarm[i]["speed"] * delta
+		if swarm[i]["pos"].y > 780.0:
+			swarm[i] = _new_swarm_unit(false)
+	ship.position = ship_base + Vector2(sin(time_elapsed * 0.9) * 10.0, sin(time_elapsed * 1.7) * 8.0)
 	queue_redraw()
 
 func _draw() -> void:
-	# 1. Background Void
-	draw_rect(Rect2(0, 0, 1280, 720), Color(0.012, 0.016, 0.032))
-	
-	# 2. Glowing Nebulae
-	for neb in nebulae:
-		var p = neb["pos"] + Vector2(sin(time_elapsed * 0.5) * 20.0, cos(time_elapsed * 0.4) * 15.0)
-		var c: Color = neb["color"]
-		var r = neb["radius"]
-		draw_circle(p, r, Color(c.r, c.g, c.b, c.a * 0.4))
-		draw_circle(p, r * 0.6, Color(c.r, c.g, c.b, c.a * 0.7))
-		
-	# 3. Drifting Stars
+	var w = size.x
+	var h = size.y
+	var Y = CyberPalette.YELLOW
+
+	# 1. Void
+	draw_rect(Rect2(0, 0, w, h), Color(0.02, 0.02, 0.035))
+
+	# 2. Stars streaking downward (ship flies "up")
 	for s in stars:
-		var pulse = 0.7 + 0.3 * sin(time_elapsed * 3.0 + s["pos"].x)
-		var c: Color = s["color"]
-		draw_circle(s["pos"], s["size"], Color(c.r, c.g, c.b, s["alpha"] * pulse))
-		
-	# 4. Cyberpunk Tech Brackets
-	var cyan_accent = Color(0.1, 0.8, 1.0, 0.45)
-	draw_line(Vector2(25, 25), Vector2(90, 25), cyan_accent, 2.0)
-	draw_line(Vector2(25, 25), Vector2(25, 90), cyan_accent, 2.0)
-	
-	draw_line(Vector2(1255, 25), Vector2(1190, 25), cyan_accent, 2.0)
-	draw_line(Vector2(1255, 25), Vector2(1255, 90), cyan_accent, 2.0)
-	
-	draw_line(Vector2(25, 695), Vector2(90, 695), cyan_accent, 2.0)
-	draw_line(Vector2(25, 695), Vector2(25, 630), cyan_accent, 2.0)
-	
-	draw_line(Vector2(1255, 695), Vector2(1190, 695), cyan_accent, 2.0)
-	draw_line(Vector2(1255, 695), Vector2(1255, 630), cyan_accent, 2.0)
-	
-	# 5. Cyberpunk Code Terminal Log Box (Left Side)
-	var log_box_rect = Rect2(30, 135, 340, 260)
-	draw_rect(log_box_rect, Color(0.02, 0.04, 0.08, 0.75))
-	draw_rect(log_box_rect, Color(0.1, 0.65, 0.95, 0.45), false, 1.5)
-	
-	# Header for terminal log
-	var font = ThemeDB.fallback_font
-	var font_sz = 10
-	draw_string(font, Vector2(42, 158), "// SECURE_SHELL::LOGS", HORIZONTAL_ALIGNMENT_LEFT, -1, font_sz, Color(0.3, 0.9, 1.0, 0.9))
-	
-	var visible_lines = min(BOOT_LOGS.size(), int(time_elapsed * 2.5) + 1)
-	for i in range(visible_lines):
-		var y_pos = 185 + i * 26
-		draw_string(font, Vector2(42, y_pos), BOOT_LOGS[i], HORIZONTAL_ALIGNMENT_LEFT, -1, font_sz, Color(0.4, 0.8, 0.9, 0.75))
-		
-	# Terminal cursor
-	if fmod(time_elapsed * 3.0, 2.0) < 1.0:
-		var cur_y = 185 + visible_lines * 26
-		if cur_y < 380:
-			draw_string(font, Vector2(42, cur_y), "> _", HORIZONTAL_ALIGNMENT_LEFT, -1, font_sz, Color(0.2, 1.0, 0.5))
+		var a = s["alpha"]
+		draw_line(s["pos"], s["pos"] - Vector2(0, s["speed"] * 0.08), Color(0.8, 0.9, 1.0, a * 0.6), s["size"])
+
+	# 3. Perspective grid floor
+	var horizon = h * 0.62
+	var grid_col = Color(CyberPalette.CYAN, 0.12)
+	for i in range(-12, 13):
+		var x0 = w * 0.62 + float(i) * 34.0
+		var x1 = w * 0.62 + float(i) * 260.0
+		draw_line(Vector2(x0, horizon), Vector2(x1, h), grid_col, 1.0)
+	var scroll = fmod(time_elapsed * 0.35, 1.0)
+	for j in range(12):
+		var t = (float(j) + scroll) / 12.0
+		var y = horizon + (h - horizon) * t * t
+		draw_line(Vector2(0, y), Vector2(w, y), Color(CyberPalette.CYAN, 0.04 + 0.12 * t), 1.0)
+	draw_rect(Rect2(0, horizon - 1, w, 2), Color(CyberPalette.RED, 0.35))
+
+	# 4. Hostile swarm silhouettes (red-tinted, behind the ship)
+	for e in swarm:
+		if e["tex"]:
+			var tex: Texture2D = e["tex"]
+			var sz = tex.get_size() * e["scale"]
+			draw_texture_rect(tex, Rect2(e["pos"] - sz * 0.5, sz), false, Color(1.0, 0.15, 0.3, 0.28))
+
+	# 5. Diagonal hazard slash behind the title
+	var slash = PackedVector2Array([Vector2(0, 118), Vector2(700, 118), Vector2(640, 136), Vector2(0, 136)])
+	draw_colored_polygon(slash, Color(Y, 0.9))
+	for k in range(0, 640, 24):
+		draw_colored_polygon(PackedVector2Array([
+			Vector2(k, 136), Vector2(k + 12, 136), Vector2(k + 4, 142), Vector2(k - 8, 142)
+		]), Color(Y, 0.55))
+
+	# 6. Corner brackets
+	var c = Color(Y, 0.6)
+	for corner in [Vector2(24, 24), Vector2(w - 24, 24), Vector2(24, h - 24), Vector2(w - 24, h - 24)]:
+		var sx = 1.0 if corner.x < w * 0.5 else -1.0
+		var sy = 1.0 if corner.y < h * 0.5 else -1.0
+		draw_line(corner, corner + Vector2(48 * sx, 0), c, 3.0)
+		draw_line(corner, corner + Vector2(0, 48 * sy), c, 3.0)
+
+	# 7. Engine glow under the ship
+	var flame = 0.6 + 0.4 * sin(time_elapsed * 22.0)
+	var tail = ship.position + Vector2(0, 120).rotated(ship.rotation)
+	draw_circle(tail, 40.0 * flame, Color(CyberPalette.CYAN, 0.10))
+	draw_circle(tail, 18.0 * flame, Color(CyberPalette.CYAN, 0.25))
 
 func _on_start_pressed() -> void:
 	AudioManager.play_sfx("upgrade_select")
 	GameManager.start_game()
 
+func _img(icon_name: String, hex: String) -> String:
+	return "[img width=30 height=30 color=%s]%s%s.png[/img]" % [hex, CyberPalette.ICON_DIR, icon_name]
+
+func _key(k: String) -> String:
+	return "[bgcolor=#fcee0a][color=#05050a][b] %s [/b][/color][/bgcolor]" % k
+
 func _on_info_pressed() -> void:
 	AudioManager.play_sfx("laser", 0.1, -4.0)
+	dialog_title.text = "КЕРУВАННЯ"
 	info_dialog.visible = true
-	info_text.text = "[b][color=#33c3ff]КЕРУВАННЯ ТА БОРТОВІ СИСТЕМИ:[/color][/b]\n" + \
-		"• [b]W, A, S, D[/b] / [b]Стрілки[/b] — маневрування та форсаж дюз ARC-01\n" + \
-		"• [b]ТАВ[/b] / [b]T[/b] — виклик Технологічної Матриці (дерево навичок)\n" + \
-		"• [b]ESC[/b] / [b]P[/b] — пауза та меню налаштувань\n\n" + \
-		"[b][color=#ffcc33]СУТЬ ГРИ ТА КІБЕРПАНК-ПРОКАЧКА:[/color][/b]\n" + \
-		"• Знищуйте тисячні армади заражених автоматонів та збирайте нанітні чіпи.\n" + \
-		"• Повне [b]відкрите дерево розвитку[/b] (12 технологій, 3 кібер-шини: Озброєння, Захист, Оверклокінг).\n" + \
-		"• Відкривайте [b]СИНЕРГІЇ[/b]:\n" + \
-		"  - [color=#00f0ff]Плазмовий Шторм[/color] (ланцюгові блискавки)\n" + \
-		"  - [color=#ff00aa]Апокаліптичний EMP[/color] (вибух на весь екран при зламі щита)\n" + \
-		"  - [color=#ff8800]Рій Валькірія[/color] (тахіонні пробивальні ракети)\n" + \
-		"  - [color=#00ff88]Нанітний Бастіон[/color] (орбітальний бар'єр та потрійна регенерація)!\n" + \
-		"• Протримайтеся 7 хвилин під натиском армад ворогів до повної евакуації!"
+	info_text.text = "%s %s  рух\n\n%s %s  модернізація\n\n%s  пауза / закрити\n\n" % [
+		_key("W A S D"), _key("СТРІЛКИ"), _key("TAB"), _key("T"), _key("ESC")] + \
+		"[color=#8c8fa8]Протримайся 7 хвилин. Збирай брухт, качай модулі, поєднуй їх у синергії:[/color]\n\n" + \
+		"%s %s  [color=#ff4dd9]=[/color]  %s          " % [_img("blaster", "#ff003c"), _img("conductor", "#fcee0a"), _img("plasma_storm", "#ff4dd9")] + \
+		"%s %s  [color=#ff4dd9]=[/color]  %s\n\n" % [_img("shield", "#00f0ff"), _img("emp", "#fcee0a"), _img("emp_apocalypse", "#ff4dd9")] + \
+		"%s %s  [color=#ff4dd9]=[/color]  %s          " % [_img("missiles", "#ff003c"), _img("railgun", "#ff003c"), _img("valkyrie_swarm", "#ff4dd9")] + \
+		"%s %s  [color=#ff4dd9]=[/color]  %s\n\n" % [_img("repair", "#00f0ff"), _img("drones", "#ff003c"), _img("nanite_bastion", "#ff4dd9")] + \
+		"%s %s  [color=#ff4dd9]=[/color]  %s          " % [_img("virus", "#33ff8c"), _img("emp", "#fcee0a"), _img("black_ice", "#ff4dd9")] + \
+		"%s %s  [color=#ff4dd9]=[/color]  %s" % [_img("data_spike", "#33ff8c"), _img("drones", "#ff003c"), _img("ghost_swarm", "#ff4dd9")]
 
 func _on_credits_pressed() -> void:
 	AudioManager.play_sfx("laser", 0.1, -4.0)
+	dialog_title.text = "АВТОРИ"
 	info_dialog.visible = true
-	info_text.text = "[b][color=#33ff88]ДЖЕРЕЛА ВІДКРИТИХ РЕСУРСІВ (CC0):[/color][/b]\n\n" + \
-		"• [b]Графіка:[/b] Kenney CC0 Assets (Space Shooter Redux, Robot Pack, RTS Sci-Fi) — kenney.nl\n" + \
-		"• [b]Шрифт:[/b] Kenney Future (CC0 Public Domain)\n" + \
-		"• [b]Звукові ефекти:[/b] Kenney Digital Audio & Impact Sounds (CC0 1.0 Universal)\n" + \
-		"• [b]Саундтрек:[/b] Синтезований кіберпанк-мотив D-minor (CC0 Public Domain)\n" + \
-		"• [b]Рушій:[/b] Godot Engine 4.7.2 (MIT License)\n\n" + \
-		"[color=#aaaaaa]Навчальний проект для НУБіП України. Всі ассети 100% безкоштовні та відкриті для некомерційного використання.[/color]"
+	info_text.text = "[b]Графіка[/b]\nKenney — kenney.nl (CC0)\nВибухи: Sinestesia (CC0) · Бос: pzUH (CC0)\n\n" + \
+		"[b]Іконки[/b]\ngame-icons.net — Lorc, Delapouite, sbed, guard13007 (CC BY 3.0)\n\n" + \
+		"[b]Шрифти[/b]\nTektur, JetBrains Mono (SIL OFL 1.1)\n\n" + \
+		"[b]Звук[/b]\nKenney, Juhani Junkala, rubberduck (CC0)\nМузика: Joth — Cyberpunk Moonlight Sonata (CC0)\n\n" + \
+		"[b]Рушій[/b]\nGodot Engine (MIT)\n\n" + \
+		"[color=#8c8fa8]Навчальний проєкт, НУБіП України. Некомерційне використання.[/color]"
+
+func _sync_audio_icons() -> void:
+	music_btn.modulate = Color(1, 1, 1, 0.35) if AudioManager.music_muted else Color.WHITE
+	sfx_btn.icon = CyberPalette.icon("sfx_off" if AudioManager.sfx_muted else "sfx_on")
 
 func _on_toggle_music() -> void:
-	var on = AudioManager.toggle_music()
-	var icon_path = "res://assets/sprites/ui/icons/musicOn.png" if on else "res://assets/sprites/ui/icons/musicOff.png"
-	if ResourceLoader.exists(icon_path):
-		music_btn.icon = load(icon_path)
-	music_btn.modulate = Color.WHITE if on else Color(0.6, 0.6, 0.6, 0.7)
+	AudioManager.toggle_music()
+	_sync_audio_icons()
 
 func _on_toggle_sfx() -> void:
-	var on = AudioManager.toggle_sfx()
-	var icon_path = "res://assets/sprites/ui/icons/audioOn.png" if on else "res://assets/sprites/ui/icons/audioOff.png"
-	if ResourceLoader.exists(icon_path):
-		sfx_btn.icon = load(icon_path)
-	sfx_btn.modulate = Color.WHITE if on else Color(0.6, 0.6, 0.6, 0.7)
+	AudioManager.toggle_sfx()
+	_sync_audio_icons()

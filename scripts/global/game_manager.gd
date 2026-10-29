@@ -7,6 +7,7 @@ signal stats_updated
 signal level_up_occurred(new_level, points_available)
 signal skill_upgraded(skill_id, new_level)
 signal synergy_unlocked(synergy_id, synergy_info)
+signal doctrine_changed(branch)
 signal player_damaged(current_hp, max_hp, current_shield, max_shield)
 signal scrap_picked_up(amount)
 signal wave_changed(wave_index, wave_name)
@@ -41,6 +42,9 @@ var skill_levels: Dictionary = {}
 # Active Synergies: Array of synergy_id strings
 var active_synergies: Array[String] = []
 
+# Active doctrine: a SkillData.Branch value, or -1 for none
+var active_doctrine: int = -1
+
 # Reference to active player node
 var player_node: Node2D = null
 
@@ -66,6 +70,7 @@ func reset_run() -> void:
 	skill_levels["blaster"] = 1
 	
 	active_synergies.clear()
+	active_doctrine = -1
 	current_state = State.MENU
 
 func start_game() -> void:
@@ -144,6 +149,7 @@ func upgrade_skill(skill_id: String) -> bool:
 	stats_updated.emit()
 	
 	check_synergies()
+	update_doctrine()
 	
 	if player_node and player_node.has_method("apply_upgrades"):
 		player_node.apply_upgrades()
@@ -168,6 +174,32 @@ func check_synergies() -> void:
 
 func is_synergy_active(syn_id: String) -> bool:
 	return syn_id in active_synergies
+
+func branch_points(branch: int) -> int:
+	var total = 0
+	for skill_id in SkillData.SKILLS.keys():
+		if SkillData.SKILLS[skill_id]["branch"] == branch:
+			total += get_skill_level(skill_id)
+	return total
+
+# A branch takes over only with strictly more points than the current doctrine,
+# so a tie never flips the play style back and forth.
+func update_doctrine() -> void:
+	var best = active_doctrine
+	var best_pts = branch_points(active_doctrine) if active_doctrine >= 0 else SkillData.DOCTRINE_MIN_POINTS - 1
+	for branch in SkillData.DOCTRINES.keys():
+		var pts = branch_points(branch)
+		if pts > best_pts:
+			best = branch
+			best_pts = pts
+	if best != active_doctrine:
+		active_doctrine = best
+		doctrine_changed.emit(best)
+
+func doctrine_mod(key: String, default: float = 1.0) -> float:
+	if active_doctrine < 0:
+		return default
+	return SkillData.DOCTRINES[active_doctrine]["mods"].get(key, default)
 
 func trigger_game_over(victory: bool = false) -> void:
 	if current_state == State.GAME_OVER or current_state == State.VICTORY:

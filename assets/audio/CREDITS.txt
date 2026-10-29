@@ -1,0 +1,28 @@
+AUDIO CREDITS
+
+All files below are CC0 1.0 (public domain dedication): https://creativecommons.org/publicdomain/zero/1.0/
+Attribution is not required; it is recorded here for traceability.
+Edits: leading/trailing silence trimmed, length capped, mixed to mono 44.1 kHz,
+short fades added, gain matched per key (peak <= -1 dBFS). Music: -3.5 dB gain, re-encoded 128 kbps.
+
+File                      Source file                       Pack / author / URL
+------------------------  --------------------------------  ------------------------------------------------------------
+laser_fire.wav            laserRetro_000.ogg                Sci-fi Sounds - Kenney - https://kenney.nl/assets/sci-fi-sounds
+laser_fire_2.wav          laserRetro_001.ogg                Sci-fi Sounds - Kenney - https://kenney.nl/assets/sci-fi-sounds
+laser_fire_3.wav          laserRetro_004.ogg                Sci-fi Sounds - Kenney - https://kenney.nl/assets/sci-fi-sounds
+railgun_fire.wav          retro_laser_01.ogg                50 CC0 Sci-Fi SFX - rubberduck - https://opengameart.org/content/50-cc0-sci-fi-sfx
+missile_launch.wav        sfx_wpn_missilelaunch.wav         512 Sound Effects (8-bit style) - Juhani Junkala - https://opengameart.org/content/512-sound-effects-8-bit-style
+scrap_pickup.wav          sfx_coin_single3.wav              512 Sound Effects (8-bit style) - Juhani Junkala - https://opengameart.org/content/512-sound-effects-8-bit-style
+scrap_pickup_2.wav        sfx_coin_single5.wav              512 Sound Effects (8-bit style) - Juhani Junkala - https://opengameart.org/content/512-sound-effects-8-bit-style
+explosion.wav             sfx_exp_short_hard1.wav           512 Sound Effects (8-bit style) - Juhani Junkala - https://opengameart.org/content/512-sound-effects-8-bit-style
+explosion_2.wav           sfx_exp_short_hard4.wav           512 Sound Effects (8-bit style) - Juhani Junkala - https://opengameart.org/content/512-sound-effects-8-bit-style
+explosion_3.wav           sfx_exp_short_hard8.wav           512 Sound Effects (8-bit style) - Juhani Junkala - https://opengameart.org/content/512-sound-effects-8-bit-style
+heavy_explosion.wav       sfx_exp_medium8.wav               512 Sound Effects (8-bit style) - Juhani Junkala - https://opengameart.org/content/512-sound-effects-8-bit-style
+emp_blast.wav             zap2.ogg                          Digital Audio - Kenney - https://kenney.nl/assets/digital-audio
+shield_hit.wav            phaserDown2.ogg                   Digital Audio - Kenney - https://kenney.nl/assets/digital-audio
+level_up.wav              zapThreeToneUp.ogg                Digital Audio - Kenney - https://kenney.nl/assets/digital-audio
+ui_hover.wav              glitch_002.ogg                    Interface Sounds - Kenney - https://kenney.nl/assets/interface-sounds
+upgrade_select.wav        confirmation_001.ogg              Interface Sounds - Kenney - https://kenney.nl/assets/interface-sounds
+victory.wav               sfx_sounds_fanfare1.wav           512 Sound Effects (8-bit style) - Juhani Junkala - https://opengameart.org/content/512-sound-effects-8-bit-style
+game_over.wav             sfx_sounds_negative1.wav          512 Sound Effects (8-bit style) - Juhani Junkala - https://opengameart.org/content/512-sound-effects-8-bit-style
+bgm_cyberpunk_sonata.mp3  Cyberpunk Moonlight Sonata v2.mp3 Cyberpunk Moonlight Sonata - Joth - https://opengameart.org/content/cyberpunk-moonlight-sonata

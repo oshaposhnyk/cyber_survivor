@@ -1,219 +1,237 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://scenes/ui/game_over.gd" id="1_script"]
-[ext_resource type="FontFile" path="res://assets/fonts/Kenney Future.ttf" id="2_font"]
+[ext_resource type="Script" path="res://scripts/ui/glitch_title.gd" id="2_glitch"]
+[ext_resource type="Shader" path="res://assets/shaders/crt_overlay.gdshader" id="3_crt"]
+[ext_resource type="Texture2D" path="res://assets/sprites/ui/gi/time.png" id="4_time"]
+[ext_resource type="Texture2D" path="res://assets/sprites/ui/gi/kills.png" id="5_kills"]
+[ext_resource type="Texture2D" path="res://assets/sprites/ui/gi/scrap.png" id="6_scrap"]
+[ext_resource type="Texture2D" path="res://assets/sprites/ui/gi/level.png" id="7_level"]
+[ext_resource type="Texture2D" path="res://assets/sprites/ui/gi/retry.png" id="8_retry"]
+[ext_resource type="Texture2D" path="res://assets/sprites/ui/gi/home.png" id="9_home"]
+[ext_resource type="Texture2D" path="res://assets/sprites/ui/hazard_stripes.png" id="10_stripes"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_gameover_bg"]
-bg_color = Color(0.03, 0.05, 0.09, 0.96)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.85, 0.25, 0.25, 0.9)
-corner_radius_top_left = 10
-corner_radius_top_right = 10
-corner_radius_bottom_right = 10
-corner_radius_bottom_left = 10
-shadow_color = Color(0.8, 0.2, 0.2, 0.35)
-shadow_size = 22
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_retry"]
-bg_color = Color(0.08, 0.35, 0.22, 0.95)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.2, 0.95, 0.45, 1)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
-shadow_color = Color(0.1, 0.9, 0.4, 0.3)
-shadow_size = 10
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_retry_hover"]
-bg_color = Color(0.12, 0.50, 0.30, 1)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.5, 1, 0.7, 1)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
-shadow_color = Color(0.2, 1, 0.5, 0.5)
-shadow_size = 16
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_menu"]
-bg_color = Color(0.10, 0.16, 0.26, 0.95)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.3, 0.65, 0.95, 1)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
-shadow_color = Color(0.2, 0.6, 1, 0.25)
-shadow_size = 10
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_menu_hover"]
-bg_color = Color(0.16, 0.25, 0.40, 1)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.5, 0.85, 1, 1)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
-shadow_color = Color(0.3, 0.8, 1, 0.45)
-shadow_size = 16
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_crt"]
+shader = ExtResource("3_crt")
+shader_parameter/scanline_alpha = 0.12
+shader_parameter/scanline_density = 3.0
+shader_parameter/vignette_strength = 1.0
+shader_parameter/band_alpha = 0.04
+shader_parameter/grain_alpha = 0.04
+shader_parameter/tint = Color(0, 0, 0, 1)
 
 [node name="GameOverUI" type="CanvasLayer"]
 process_mode = 3
 layer = 30
 script = ExtResource("1_script")
 
-[node name="Panel" type="Panel" parent="."]
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -320.0
-offset_top = -230.0
-offset_right = 320.0
-offset_bottom = 230.0
-grow_horizontal = 2
-grow_vertical = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_gameover_bg")
-
-[node name="Margin" type="MarginContainer" parent="Panel"]
-layout_mode = 1
+[node name="Backdrop" type="ColorRect" parent="."]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/margin_left = 32
-theme_override_constants/margin_top = 26
-theme_override_constants/margin_right = 32
-theme_override_constants/margin_bottom = 26
+color = Color(0.01, 0.01, 0.02, 0.88)
+
+[node name="Panel" type="PanelContainer" parent="."]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -380.0
+offset_top = -220.0
+offset_right = 380.0
+offset_bottom = 220.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_type_variation = &"DangerPanel"
+
+[node name="Margin" type="MarginContainer" parent="Panel"]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 8
 
 [node name="VBox" type="VBoxContainer" parent="Panel/Margin"]
 layout_mode = 2
 theme_override_constants/separation = 18
 alignment = 1
 
-[node name="TitleLabel" type="Label" parent="Panel/Margin/VBox"]
+[node name="Stripes" type="TextureRect" parent="Panel/Margin/VBox"]
+custom_minimum_size = Vector2(0, 8)
 layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.35, 0.35, 1)
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 18
-text = "СИСТЕМНИЙ ЗБІЙ: КОРПУС ЗНИЩЕНО"
+texture = ExtResource("10_stripes")
+stretch_mode = 1
+self_modulate = Color(1, 0, 0.235, 0.9)
+
+[node name="TitleLabel" type="Control" parent="Panel/Margin/VBox"]
+custom_minimum_size = Vector2(0, 64)
+layout_mode = 2
+script = ExtResource("2_glitch")
+text = "СИСТЕМУ ЗНИЩЕНО"
+font_size = 46
+color = Color(1, 0, 0.235, 1)
+
+[node name="StatsGrid" type="HBoxContainer" parent="Panel/Margin/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 14
+alignment = 1
+
+[node name="TimeTile" type="PanelContainer" parent="Panel/Margin/VBox/StatsGrid"]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+tooltip_text = "Час місії"
+theme_type_variation = &"StatTile"
+
+[node name="VBox" type="VBoxContainer" parent="Panel/Margin/VBox/StatsGrid/TimeTile"]
+layout_mode = 2
+alignment = 1
+
+[node name="Icon" type="TextureRect" parent="Panel/Margin/VBox/StatsGrid/TimeTile/VBox"]
+custom_minimum_size = Vector2(0, 38)
+layout_mode = 2
+texture = ExtResource("4_time")
+expand_mode = 1
+stretch_mode = 5
+self_modulate = Color(0.988, 0.933, 0.039, 1)
+
+[node name="TimeVal" type="Label" parent="Panel/Margin/VBox/StatsGrid/TimeTile/VBox"]
+layout_mode = 2
+theme_type_variation = &"MonoLabel"
+theme_override_font_sizes/font_size = 28
+text = "00:00"
 horizontal_alignment = 1
 
-[node name="StatsGrid" type="GridContainer" parent="Panel/Margin/VBox"]
+[node name="Caption" type="Label" parent="Panel/Margin/VBox/StatsGrid/TimeTile/VBox"]
 layout_mode = 2
-theme_override_constants/h_separation = 22
-theme_override_constants/v_separation = 12
-columns = 2
+theme_type_variation = &"DimLabel"
+text = "ЧАС"
+horizontal_alignment = 1
 
-[node name="TimeLabel" type="Label" parent="Panel/Margin/VBox/StatsGrid"]
+[node name="KillsTile" type="PanelContainer" parent="Panel/Margin/VBox/StatsGrid"]
+custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.65, 0.75, 0.9, 1)
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 13
-text = "Час місії:"
+tooltip_text = "Знищено ворогів"
+theme_type_variation = &"StatTile"
 
-[node name="TimeVal" type="Label" parent="Panel/Margin/VBox/StatsGrid"]
+[node name="VBox" type="VBoxContainer" parent="Panel/Margin/VBox/StatsGrid/KillsTile"]
 layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.85, 0.3, 1)
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 14
-text = "00:00"
+alignment = 1
 
-[node name="KillsLabel" type="Label" parent="Panel/Margin/VBox/StatsGrid"]
+[node name="Icon" type="TextureRect" parent="Panel/Margin/VBox/StatsGrid/KillsTile/VBox"]
+custom_minimum_size = Vector2(0, 38)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.65, 0.75, 0.9, 1)
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 13
-text = "Знищено автоматонів:"
+texture = ExtResource("5_kills")
+expand_mode = 1
+stretch_mode = 5
+self_modulate = Color(1, 0, 0.235, 1)
 
-[node name="KillsVal" type="Label" parent="Panel/Margin/VBox/StatsGrid"]
+[node name="KillsVal" type="Label" parent="Panel/Margin/VBox/StatsGrid/KillsTile/VBox"]
 layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.4, 0.4, 1)
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 14
+theme_type_variation = &"MonoLabel"
+theme_override_font_sizes/font_size = 28
 text = "0"
+horizontal_alignment = 1
 
-[node name="ScrapLabel" type="Label" parent="Panel/Margin/VBox/StatsGrid"]
+[node name="Caption" type="Label" parent="Panel/Margin/VBox/StatsGrid/KillsTile/VBox"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.65, 0.75, 0.9, 1)
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 13
-text = "Зібрано нанітного брухту:"
+theme_type_variation = &"DimLabel"
+text = "ЗНИЩЕНО"
+horizontal_alignment = 1
 
-[node name="ScrapVal" type="Label" parent="Panel/Margin/VBox/StatsGrid"]
+[node name="ScrapTile" type="PanelContainer" parent="Panel/Margin/VBox/StatsGrid"]
+custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.3, 0.9, 1, 1)
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 14
+tooltip_text = "Нанітний брухт"
+theme_type_variation = &"StatTile"
+
+[node name="VBox" type="VBoxContainer" parent="Panel/Margin/VBox/StatsGrid/ScrapTile"]
+layout_mode = 2
+alignment = 1
+
+[node name="Icon" type="TextureRect" parent="Panel/Margin/VBox/StatsGrid/ScrapTile/VBox"]
+custom_minimum_size = Vector2(0, 38)
+layout_mode = 2
+texture = ExtResource("6_scrap")
+expand_mode = 1
+stretch_mode = 5
+self_modulate = Color(0, 0.941, 1, 1)
+
+[node name="ScrapVal" type="Label" parent="Panel/Margin/VBox/StatsGrid/ScrapTile/VBox"]
+layout_mode = 2
+theme_type_variation = &"MonoLabel"
+theme_override_font_sizes/font_size = 28
 text = "0"
+horizontal_alignment = 1
 
-[node name="LevelLabel" type="Label" parent="Panel/Margin/VBox/StatsGrid"]
+[node name="Caption" type="Label" parent="Panel/Margin/VBox/StatsGrid/ScrapTile/VBox"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.65, 0.75, 0.9, 1)
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 13
-text = "Фінальний рівень:"
+theme_type_variation = &"DimLabel"
+text = "БРУХТ"
+horizontal_alignment = 1
 
-[node name="LevelVal" type="Label" parent="Panel/Margin/VBox/StatsGrid"]
+[node name="LevelTile" type="PanelContainer" parent="Panel/Margin/VBox/StatsGrid"]
+custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.3, 1, 0.5, 1)
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 14
+tooltip_text = "Фінальний рівень"
+theme_type_variation = &"StatTile"
+
+[node name="VBox" type="VBoxContainer" parent="Panel/Margin/VBox/StatsGrid/LevelTile"]
+layout_mode = 2
+alignment = 1
+
+[node name="Icon" type="TextureRect" parent="Panel/Margin/VBox/StatsGrid/LevelTile/VBox"]
+custom_minimum_size = Vector2(0, 38)
+layout_mode = 2
+texture = ExtResource("7_level")
+expand_mode = 1
+stretch_mode = 5
+self_modulate = Color(0.988, 0.933, 0.039, 1)
+
+[node name="LevelVal" type="Label" parent="Panel/Margin/VBox/StatsGrid/LevelTile/VBox"]
+layout_mode = 2
+theme_type_variation = &"MonoLabel"
+theme_override_font_sizes/font_size = 28
 text = "1"
+horizontal_alignment = 1
 
-[node name="SynergiesLabel" type="Label" parent="Panel/Margin/VBox/StatsGrid"]
+[node name="Caption" type="Label" parent="Panel/Margin/VBox/StatsGrid/LevelTile/VBox"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.65, 0.75, 0.9, 1)
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 13
-text = "Активовані синергії:"
+theme_type_variation = &"DimLabel"
+text = "РІВЕНЬ"
+horizontal_alignment = 1
 
-[node name="SynergiesVal" type="Label" parent="Panel/Margin/VBox/StatsGrid"]
+[node name="SynergiesRow" type="HBoxContainer" parent="Panel/Margin/VBox"]
+custom_minimum_size = Vector2(0, 36)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.9, 0.45, 1, 1)
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 12
-text = "Немає"
+theme_override_constants/separation = 12
+alignment = 1
 
 [node name="Buttons" type="HBoxContainer" parent="Panel/Margin/VBox"]
 layout_mode = 2
-theme_override_constants/separation = 20
+theme_override_constants/separation = 18
 alignment = 1
 
 [node name="RetryBtn" type="Button" parent="Panel/Margin/VBox/Buttons"]
-custom_minimum_size = Vector2(210, 44)
+custom_minimum_size = Vector2(220, 54)
 layout_mode = 2
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 13
-theme_override_styles/normal = SubResource("StyleBoxFlat_btn_retry")
-theme_override_styles/hover = SubResource("StyleBoxFlat_btn_retry_hover")
-text = "▶ СПРОБУВАТИ ЗНОВУ"
+theme_type_variation = &"PrimaryButton"
+text = "ЩЕ РАЗ"
+icon = ExtResource("8_retry")
 
 [node name="MenuBtn" type="Button" parent="Panel/Margin/VBox/Buttons"]
-custom_minimum_size = Vector2(210, 44)
+custom_minimum_size = Vector2(180, 54)
 layout_mode = 2
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 13
-theme_override_styles/normal = SubResource("StyleBoxFlat_btn_menu")
-theme_override_styles/hover = SubResource("StyleBoxFlat_btn_menu_hover")
-text = "⌂ ГОЛОВНЕ МЕНЮ"
+text = "МЕНЮ"
+icon = ExtResource("9_home")
+
+[node name="CRT" type="ColorRect" parent="."]
+material = SubResource("ShaderMaterial_crt")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2

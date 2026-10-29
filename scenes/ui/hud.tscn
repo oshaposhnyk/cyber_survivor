@@ -1,340 +1,328 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://scenes/ui/hud.gd" id="1_script"]
-[ext_resource type="FontFile" path="res://assets/fonts/Kenney Future.ttf" id="2_font"]
-[ext_resource type="Texture2D" path="res://assets/sprites/ui/icons/fastForward.png" id="3_timer_icon"]
-[ext_resource type="Texture2D" path="res://assets/sprites/ui/icons/target.png" id="4_kills_icon"]
-[ext_resource type="Texture2D" path="res://assets/sprites/pickups/scrap_blue.png" id="5_scrap_icon"]
+[ext_resource type="Texture2D" path="res://assets/sprites/ui/gi/time.png" id="3_time"]
+[ext_resource type="Texture2D" path="res://assets/sprites/ui/gi/kills.png" id="4_kills"]
+[ext_resource type="Texture2D" path="res://assets/sprites/ui/gi/scrap.png" id="5_scrap"]
+[ext_resource type="Texture2D" path="res://assets/sprites/ui/gi/hazard.png" id="6_hazard"]
+[ext_resource type="Texture2D" path="res://assets/sprites/ui/gi/upgrade.png" id="7_upgrade"]
+[ext_resource type="Texture2D" path="res://assets/sprites/ui/hazard_stripes.png" id="8_stripes"]
+[ext_resource type="Texture2D" path="res://assets/sprites/ui/gi/hp.png" id="9_hp"]
+[ext_resource type="Shader" path="res://assets/shaders/edge_flash.gdshader" id="10_flash"]
+[ext_resource type="Shader" path="res://assets/shaders/crt_overlay.gdshader" id="11_crt"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hud_panel"]
-bg_color = Color(0.03, 0.06, 0.12, 0.75)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.15, 0.65, 0.95, 0.7)
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
-shadow_color = Color(0, 0.5, 0.9, 0.2)
-shadow_size = 10
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_flash"]
+shader = ExtResource("10_flash")
+shader_parameter/flash_color = Color(1, 0, 0.235, 1)
+shader_parameter/intensity = 0.0
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hp_bg"]
-bg_color = Color(0.08, 0.10, 0.15, 0.9)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.2, 0.4, 0.6, 0.6)
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-corner_radius_bottom_right = 4
-corner_radius_bottom_left = 4
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_vignette"]
+shader = ExtResource("11_crt")
+shader_parameter/scanline_alpha = 0.04
+shader_parameter/scanline_density = 3.0
+shader_parameter/vignette_strength = 0.55
+shader_parameter/band_alpha = 0.0
+shader_parameter/grain_alpha = 0.015
+shader_parameter/tint = Color(0, 0, 0, 1)
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hp_fill"]
-bg_color = Color(0.1, 0.9, 0.4, 1)
-corner_radius_top_left = 3
-corner_radius_top_right = 3
-corner_radius_bottom_right = 3
-corner_radius_bottom_left = 3
-shadow_color = Color(0.1, 0.9, 0.4, 0.4)
-shadow_size = 6
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_shield_fill"]
-bg_color = Color(0.15, 0.85, 1, 1)
-corner_radius_top_left = 3
-corner_radius_top_right = 3
-corner_radius_bottom_right = 3
-corner_radius_bottom_left = 3
-shadow_color = Color(0.15, 0.85, 1, 0.5)
-shadow_size = 6
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_xp_bg"]
-bg_color = Color(0.04, 0.06, 0.10, 0.95)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.1, 0.5, 0.8, 0.5)
-corner_radius_top_left = 3
-corner_radius_top_right = 3
-corner_radius_bottom_right = 3
-corner_radius_bottom_left = 3
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_xp_fill"]
-bg_color = Color(0.2, 0.75, 1, 1)
-corner_radius_top_left = 2
-corner_radius_top_right = 2
-corner_radius_bottom_right = 2
-corner_radius_bottom_left = 2
-shadow_color = Color(0.2, 0.75, 1, 0.6)
-shadow_size = 5
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_boss_fill"]
-bg_color = Color(1, 0.15, 0.15, 1)
-corner_radius_top_left = 3
-corner_radius_top_right = 3
-corner_radius_bottom_right = 3
-corner_radius_bottom_left = 3
-shadow_color = Color(1, 0.2, 0.1, 0.7)
-shadow_size = 8
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_banner"]
-bg_color = Color(0.05, 0.16, 0.28, 0.9)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.2, 0.9, 1, 0.9)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
-shadow_color = Color(0, 0.8, 1, 0.35)
-shadow_size = 14
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_wave"]
-bg_color = Color(0.04, 0.07, 0.14, 0.95)
-border_width_left = 3
-border_width_top = 3
-border_width_right = 3
-border_width_bottom = 3
-border_color = Color(1, 0.45, 0.15, 0.95)
-corner_radius_top_left = 10
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_chip"]
+bg_color = Color(0.988, 0.933, 0.039, 1)
 corner_radius_top_right = 10
-corner_radius_bottom_right = 10
 corner_radius_bottom_left = 10
-shadow_color = Color(1, 0.3, 0.1, 0.4)
-shadow_size = 20
+corner_detail = 1
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_band"]
+bg_color = Color(0.02, 0.02, 0.04, 0.88)
+content_margin_top = 14.0
+content_margin_bottom = 14.0
 
 [node name="HUD" type="CanvasLayer"]
 script = ExtResource("1_script")
 
-[node name="MarginContainer" type="MarginContainer" parent="."]
+[node name="Vignette" type="ColorRect" parent="."]
+material = SubResource("ShaderMaterial_vignette")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="EdgeFlash" type="ColorRect" parent="."]
+material = SubResource("ShaderMaterial_flash")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="XPBar" type="ProgressBar" parent="."]
 anchors_preset = 10
 anchor_right = 1.0
-offset_bottom = 88.0
+offset_bottom = 4.0
 grow_horizontal = 2
-theme_override_constants/margin_left = 20
-theme_override_constants/margin_top = 12
-theme_override_constants/margin_right = 20
-theme_override_constants/margin_bottom = 6
+theme_type_variation = &"XpBar"
+value = 0.0
+show_percentage = false
 
-[node name="MainPanel" type="PanelContainer" parent="MarginContainer"]
+[node name="PilotPlate" type="PanelContainer" parent="."]
+offset_left = 16.0
+offset_top = 14.0
+offset_right = 360.0
+offset_bottom = 70.0
+theme_type_variation = &"HudPlate"
+
+[node name="HBox" type="HBoxContainer" parent="PilotPlate"]
 layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_hud_panel")
+theme_override_constants/separation = 12
 
-[node name="PanelMargin" type="MarginContainer" parent="MarginContainer/MainPanel"]
+[node name="LevelChip" type="PanelContainer" parent="PilotPlate/HBox"]
+custom_minimum_size = Vector2(44, 44)
 layout_mode = 2
-theme_override_constants/margin_left = 16
-theme_override_constants/margin_top = 10
-theme_override_constants/margin_right = 16
-theme_override_constants/margin_bottom = 10
+tooltip_text = "Рівень"
+theme_override_styles/panel = SubResource("StyleBoxFlat_chip")
 
-[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer/MainPanel/PanelMargin"]
+[node name="LevelLabel" type="Label" parent="PilotPlate/HBox/LevelChip"]
+layout_mode = 2
+theme_type_variation = &"MonoLabel"
+theme_override_colors/font_color = Color(0.02, 0.02, 0.04, 1)
+theme_override_font_sizes/font_size = 22
+text = "1"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Bars" type="VBoxContainer" parent="PilotPlate/HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+theme_override_constants/separation = 6
+
+[node name="HPRow" type="HBoxContainer" parent="PilotPlate/HBox/Bars"]
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="TopRow" type="HBoxContainer" parent="MarginContainer/MainPanel/PanelMargin/VBoxContainer"]
+[node name="HPIcon" type="TextureRect" parent="PilotPlate/HBox/Bars/HPRow"]
+custom_minimum_size = Vector2(16, 16)
 layout_mode = 2
-theme_override_constants/separation = 24
+texture = ExtResource("9_hp")
+expand_mode = 1
+stretch_mode = 5
+self_modulate = Color(1, 0, 0.235, 1)
 
-[node name="LevelLabel" type="Label" parent="MarginContainer/MainPanel/PanelMargin/VBoxContainer/TopRow"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.2, 0.9, 1, 1)
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 16
-text = "[ ARC-01 // LVL 1 ]"
-
-[node name="HealthContainer" type="VBoxContainer" parent="MarginContainer/MainPanel/PanelMargin/VBoxContainer/TopRow"]
-custom_minimum_size = Vector2(260, 0)
-layout_mode = 2
-theme_override_constants/separation = 3
-
-[node name="HPBar" type="ProgressBar" parent="MarginContainer/MainPanel/PanelMargin/VBoxContainer/TopRow/HealthContainer"]
-custom_minimum_size = Vector2(0, 16)
-layout_mode = 2
-theme_override_styles/background = SubResource("StyleBoxFlat_hp_bg")
-theme_override_styles/fill = SubResource("StyleBoxFlat_hp_fill")
-value = 100.0
-show_percentage = false
-
-[node name="ShieldBar" type="ProgressBar" parent="MarginContainer/MainPanel/PanelMargin/VBoxContainer/TopRow/HealthContainer"]
-visible = false
-custom_minimum_size = Vector2(0, 8)
-layout_mode = 2
-theme_override_styles/background = SubResource("StyleBoxFlat_hp_bg")
-theme_override_styles/fill = SubResource("StyleBoxFlat_shield_fill")
-value = 100.0
-show_percentage = false
-
-[node name="HPLabel" type="Label" parent="MarginContainer/MainPanel/PanelMargin/VBoxContainer/TopRow/HealthContainer"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.8, 0.9, 1, 0.9)
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 11
-text = "ЦІЛІСНІСТЬ КОРПУСУ: 100/100"
-
-[node name="StatsContainer" type="HBoxContainer" parent="MarginContainer/MainPanel/PanelMargin/VBoxContainer/TopRow"]
+[node name="HPBar" type="ProgressBar" parent="PilotPlate/HBox/Bars/HPRow"]
+custom_minimum_size = Vector2(0, 14)
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 20
+size_flags_vertical = 4
+theme_type_variation = &"HpBar"
+value = 100.0
+show_percentage = false
+
+[node name="HPLabel" type="Label" parent="PilotPlate/HBox/Bars/HPRow"]
+custom_minimum_size = Vector2(36, 0)
+layout_mode = 2
+theme_type_variation = &"MonoLabel"
+theme_override_font_sizes/font_size = 14
+text = "100"
+horizontal_alignment = 2
+
+[node name="ShieldBar" type="ProgressBar" parent="PilotPlate/HBox/Bars"]
+visible = false
+custom_minimum_size = Vector2(0, 6)
+layout_mode = 2
+theme_type_variation = &"ShieldBar"
+value = 100.0
+show_percentage = false
+
+[node name="StatsPlate" type="PanelContainer" parent="."]
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -16.0
+offset_top = 14.0
+offset_right = -16.0
+offset_bottom = 58.0
+grow_horizontal = 0
+theme_type_variation = &"HudPlate"
+
+[node name="HBox" type="HBoxContainer" parent="StatsPlate"]
+layout_mode = 2
+theme_override_constants/separation = 22
 alignment = 2
 
-[node name="TimerBox" type="HBoxContainer" parent="MarginContainer/MainPanel/PanelMargin/VBoxContainer/TopRow/StatsContainer"]
+[node name="TimerBox" type="HBoxContainer" parent="StatsPlate/HBox"]
 layout_mode = 2
+tooltip_text = "Час місії"
 theme_override_constants/separation = 6
 
-[node name="TimerIcon" type="TextureRect" parent="MarginContainer/MainPanel/PanelMargin/VBoxContainer/TopRow/StatsContainer/TimerBox"]
-custom_minimum_size = Vector2(18, 18)
+[node name="Icon" type="TextureRect" parent="StatsPlate/HBox/TimerBox"]
+custom_minimum_size = Vector2(22, 22)
 layout_mode = 2
 size_flags_vertical = 4
-texture = ExtResource("3_timer_icon")
+texture = ExtResource("3_time")
 expand_mode = 1
 stretch_mode = 5
-modulate = Color(1, 0.9, 0.4, 1)
+self_modulate = Color(0.988, 0.933, 0.039, 1)
 
-[node name="TimerLabel" type="Label" parent="MarginContainer/MainPanel/PanelMargin/VBoxContainer/TopRow/StatsContainer/TimerBox"]
+[node name="TimerLabel" type="Label" parent="StatsPlate/HBox/TimerBox"]
 layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.9, 0.4, 1)
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 15
+theme_type_variation = &"MonoLabel"
 text = "00:00"
 
-[node name="KillsBox" type="HBoxContainer" parent="MarginContainer/MainPanel/PanelMargin/VBoxContainer/TopRow/StatsContainer"]
+[node name="KillsBox" type="HBoxContainer" parent="StatsPlate/HBox"]
 layout_mode = 2
+tooltip_text = "Знищено ворогів"
 theme_override_constants/separation = 6
 
-[node name="KillsIcon" type="TextureRect" parent="MarginContainer/MainPanel/PanelMargin/VBoxContainer/TopRow/StatsContainer/KillsBox"]
-custom_minimum_size = Vector2(18, 18)
+[node name="Icon" type="TextureRect" parent="StatsPlate/HBox/KillsBox"]
+custom_minimum_size = Vector2(22, 22)
 layout_mode = 2
 size_flags_vertical = 4
-texture = ExtResource("4_kills_icon")
+texture = ExtResource("4_kills")
 expand_mode = 1
 stretch_mode = 5
-modulate = Color(1, 0.35, 0.35, 1)
+self_modulate = Color(1, 0, 0.235, 1)
 
-[node name="KillsLabel" type="Label" parent="MarginContainer/MainPanel/PanelMargin/VBoxContainer/TopRow/StatsContainer/KillsBox"]
+[node name="KillsLabel" type="Label" parent="StatsPlate/HBox/KillsBox"]
 layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.35, 0.35, 1)
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 15
+theme_type_variation = &"MonoLabel"
 text = "0"
 
-[node name="ScrapBox" type="HBoxContainer" parent="MarginContainer/MainPanel/PanelMargin/VBoxContainer/TopRow/StatsContainer"]
+[node name="ScrapBox" type="HBoxContainer" parent="StatsPlate/HBox"]
 layout_mode = 2
+tooltip_text = "Нанітний брухт"
 theme_override_constants/separation = 6
 
-[node name="ScrapIcon" type="TextureRect" parent="MarginContainer/MainPanel/PanelMargin/VBoxContainer/TopRow/StatsContainer/ScrapBox"]
-custom_minimum_size = Vector2(18, 18)
+[node name="Icon" type="TextureRect" parent="StatsPlate/HBox/ScrapBox"]
+custom_minimum_size = Vector2(22, 22)
 layout_mode = 2
 size_flags_vertical = 4
-texture = ExtResource("5_scrap_icon")
+texture = ExtResource("5_scrap")
 expand_mode = 1
 stretch_mode = 5
-modulate = Color(0.3, 0.85, 1, 1)
+self_modulate = Color(0, 0.941, 1, 1)
 
-[node name="ScrapLabel" type="Label" parent="MarginContainer/MainPanel/PanelMargin/VBoxContainer/TopRow/StatsContainer/ScrapBox"]
+[node name="ScrapLabel" type="Label" parent="StatsPlate/HBox/ScrapBox"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.3, 0.85, 1, 1)
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 15
+theme_type_variation = &"MonoLabel"
 text = "0"
-
-[node name="XPBar" type="ProgressBar" parent="MarginContainer/MainPanel/PanelMargin/VBoxContainer"]
-custom_minimum_size = Vector2(0, 8)
-layout_mode = 2
-theme_override_styles/background = SubResource("StyleBoxFlat_xp_bg")
-theme_override_styles/fill = SubResource("StyleBoxFlat_xp_fill")
-value = 0.0
-show_percentage = false
 
 [node name="BossContainer" type="VBoxContainer" parent="."]
 visible = false
 anchors_preset = 5
 anchor_left = 0.5
 anchor_right = 0.5
-offset_left = -260.0
-offset_top = 92.0
-offset_right = 260.0
-offset_bottom = 132.0
+offset_left = -280.0
+offset_top = 76.0
+offset_right = 280.0
+offset_bottom = 124.0
 grow_horizontal = 2
-theme_override_constants/separation = 3
+theme_override_constants/separation = 6
 
-[node name="BossLabel" type="Label" parent="BossContainer"]
+[node name="Header" type="HBoxContainer" parent="BossContainer"]
 layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.25, 0.2, 1)
-theme_override_colors/font_shadow_color = Color(0.6, 0, 0, 0.8)
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 12
-text = "[ ⚠️ ДРЕДНОУТ-ТИТАН «LEVIATHAN-01» ⚠️ ]"
-horizontal_alignment = 1
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="Icon" type="TextureRect" parent="BossContainer/Header"]
+custom_minimum_size = Vector2(20, 20)
+layout_mode = 2
+size_flags_vertical = 4
+texture = ExtResource("6_hazard")
+expand_mode = 1
+stretch_mode = 5
+self_modulate = Color(1, 0, 0.235, 1)
+
+[node name="BossLabel" type="Label" parent="BossContainer/Header"]
+layout_mode = 2
+theme_type_variation = &"HeadingLabel"
+theme_override_colors/font_color = Color(1, 0, 0.235, 1)
+theme_override_font_sizes/font_size = 16
+text = "BOSS"
 
 [node name="BossBar" type="ProgressBar" parent="BossContainer"]
-custom_minimum_size = Vector2(0, 14)
+custom_minimum_size = Vector2(0, 16)
 layout_mode = 2
-theme_override_styles/background = SubResource("StyleBoxFlat_hp_bg")
-theme_override_styles/fill = SubResource("StyleBoxFlat_boss_fill")
+theme_type_variation = &"BossBar"
 value = 100.0
 show_percentage = false
 
 [node name="UpgradeBanner" type="Button" parent="."]
-anchors_preset = 5
+anchors_preset = 7
 anchor_left = 0.5
+anchor_top = 1.0
 anchor_right = 0.5
-offset_left = -250.0
-offset_top = 138.0
-offset_right = 250.0
-offset_bottom = 178.0
+anchor_bottom = 1.0
+offset_left = -90.0
+offset_top = -76.0
+offset_right = 90.0
+offset_bottom = -26.0
 grow_horizontal = 2
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 13
-theme_override_styles/normal = SubResource("StyleBoxFlat_banner")
-text = "⚡ ДОСТУПНІ ОЧКИ МОДЕРНІЗАЦІЇ [ТАВ]"
+grow_vertical = 0
+tooltip_text = "Відкрити модернізацію"
+focus_mode = 0
+theme_type_variation = &"PrimaryButton"
+text = "x1   TAB"
+icon = ExtResource("7_upgrade")
 
 [node name="SynergiesContainer" type="HBoxContainer" parent="."]
 anchors_preset = 2
 anchor_top = 1.0
 anchor_bottom = 1.0
-offset_left = 24.0
-offset_top = -48.0
-offset_right = 850.0
-offset_bottom = -16.0
+offset_left = 20.0
+offset_top = -60.0
+offset_right = 400.0
+offset_bottom = -20.0
 grow_vertical = 0
-theme_override_constants/separation = 16
+theme_override_constants/separation = 10
 
 [node name="WaveBanner" type="PanelContainer" parent="."]
-anchors_preset = 8
-anchor_left = 0.5
+anchors_preset = 14
 anchor_top = 0.5
-anchor_right = 0.5
+anchor_right = 1.0
 anchor_bottom = 0.5
-offset_left = -320.0
-offset_top = -120.0
-offset_right = 320.0
-offset_bottom = -30.0
+offset_top = -170.0
+offset_bottom = -76.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_wave")
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_band")
+
+[node name="StripesTop" type="TextureRect" parent="WaveBanner"]
+custom_minimum_size = Vector2(0, 6)
+layout_mode = 2
+size_flags_vertical = 0
+texture = ExtResource("8_stripes")
+expand_mode = 1
+stretch_mode = 1
+self_modulate = Color(0.988, 0.933, 0.039, 0.9)
+
+[node name="StripesBottom" type="TextureRect" parent="WaveBanner"]
+custom_minimum_size = Vector2(0, 6)
+layout_mode = 2
+size_flags_vertical = 8
+texture = ExtResource("8_stripes")
+expand_mode = 1
+stretch_mode = 1
+self_modulate = Color(0.988, 0.933, 0.039, 0.9)
 
 [node name="VBox" type="VBoxContainer" parent="WaveBanner"]
 layout_mode = 2
-theme_override_constants/separation = 6
+theme_override_constants/separation = 2
 alignment = 1
 
 [node name="WaveTitle" type="Label" parent="WaveBanner/VBox"]
 layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.45, 0.15, 1)
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 20
+theme_type_variation = &"TitleLabel"
+theme_override_font_sizes/font_size = 30
 text = "СЕКТОР 1"
 horizontal_alignment = 1
 
 [node name="WaveDesc" type="Label" parent="WaveBanner/VBox"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.9, 0.9, 0.95, 1)
-theme_override_font_sizes/font_size = 13
-text = "Опис сектору..."
+theme_type_variation = &"DimLabel"
+theme_override_colors/font_color = Color(0.91, 0.91, 0.94, 0.85)
+theme_override_font_sizes/font_size = 14
+text = "Опис"
 horizontal_alignment = 1

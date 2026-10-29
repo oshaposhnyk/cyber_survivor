@@ -3,6 +3,11 @@
 [ext_resource type="Script" path="res://scenes/player/player.gd" id="1_script"]
 [ext_resource type="Texture2D" path="res://assets/sprites/player/player_robot.png" id="2_texture"]
 [ext_resource type="Script" path="res://scenes/player/shield_fx.gd" id="3_shield_fx"]
+[ext_resource type="Script" path="res://scenes/player/synergy_aura.gd" id="4_synergy_aura"]
+[ext_resource type="Script" path="res://scripts/fx/drop_shadow.gd" id="99_shadow"]
+
+[sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_add"]
+blend_mode = 1
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_player"]
 radius = 20.0
@@ -34,5 +39,14 @@ shape = SubResource("CircleShape2D_magnet")
 visible = false
 script = ExtResource("3_shield_fx")
 
+[node name="SynergyAura" type="Node2D" parent="."]
+z_index = -1
+material = SubResource("CanvasItemMaterial_add")
+script = ExtResource("4_synergy_aura")
+
 [connection signal="area_entered" from="MagnetArea" to="." method="_on_magnet_area_area_entered"]
 [connection signal="body_entered" from="MagnetArea" to="." method="_on_magnet_area_body_entered"]
+
+[node name="Shadow" type="Sprite2D" parent="."]
+script = ExtResource("99_shadow")
+world_offset = Vector2(12, 20)

@@ -1,77 +1,24 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://scenes/ui/main_menu.gd" id="1_script"]
-[ext_resource type="FontFile" path="res://assets/fonts/Kenney Future.ttf" id="2_font"]
-[ext_resource type="Texture2D" path="res://assets/sprites/ui/icons/musicOn.png" id="3_music_icon"]
-[ext_resource type="Texture2D" path="res://assets/sprites/ui/icons/audioOn.png" id="4_sfx_icon"]
+[ext_resource type="Script" path="res://scripts/ui/glitch_title.gd" id="2_glitch"]
+[ext_resource type="Shader" path="res://assets/shaders/crt_overlay.gdshader" id="3_crt"]
+[ext_resource type="Texture2D" path="res://assets/sprites/ui/gi/play.png" id="4_play"]
+[ext_resource type="Texture2D" path="res://assets/sprites/ui/gi/info.png" id="5_info"]
+[ext_resource type="Texture2D" path="res://assets/sprites/ui/gi/credits.png" id="6_credits"]
+[ext_resource type="Texture2D" path="res://assets/sprites/ui/gi/music_on.png" id="7_music"]
+[ext_resource type="Texture2D" path="res://assets/sprites/ui/gi/sfx_on.png" id="8_sfx"]
+[ext_resource type="Texture2D" path="res://assets/sprites/ui/gi/close.png" id="9_close"]
+[ext_resource type="Texture2D" path="res://assets/sprites/player/player_ship_hd.png" id="10_ship"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_primary"]
-bg_color = Color(0.06, 0.22, 0.38, 0.85)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.2, 0.9, 1, 1)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
-shadow_color = Color(0, 0.8, 1, 0.25)
-shadow_size = 12
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_primary_hover"]
-bg_color = Color(0.12, 0.36, 0.60, 0.95)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.5, 1, 1, 1)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
-shadow_color = Color(0, 0.9, 1, 0.45)
-shadow_size = 18
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_sec"]
-bg_color = Color(0.06, 0.10, 0.16, 0.8)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.25, 0.45, 0.65, 0.8)
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_sec_hover"]
-bg_color = Color(0.10, 0.18, 0.28, 0.9)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.4, 0.8, 1, 1)
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
-shadow_color = Color(0.2, 0.6, 1, 0.2)
-shadow_size = 8
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_dialog"]
-bg_color = Color(0.04, 0.07, 0.12, 0.96)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.2, 0.85, 1, 0.9)
-corner_radius_top_left = 10
-corner_radius_top_right = 10
-corner_radius_bottom_right = 10
-corner_radius_bottom_left = 10
-shadow_color = Color(0, 0.6, 1, 0.3)
-shadow_size = 20
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_crt"]
+shader = ExtResource("3_crt")
+shader_parameter/scanline_alpha = 0.12
+shader_parameter/scanline_density = 3.0
+shader_parameter/vignette_strength = 0.9
+shader_parameter/band_alpha = 0.04
+shader_parameter/grain_alpha = 0.035
+shader_parameter/tint = Color(0, 0, 0, 1)
 
 [node name="MainMenu" type="Control"]
 layout_mode = 3
@@ -82,133 +29,118 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_script")
 
+[node name="Ship" type="Sprite2D" parent="."]
+position = Vector2(930, 380)
+rotation = -0.35
+scale = Vector2(0.8, 0.8)
+texture = ExtResource("10_ship")
+
 [node name="TopControls" type="HBoxContainer" parent="."]
 layout_mode = 1
 anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
-offset_left = -135.0
-offset_top = 35.0
-offset_right = -45.0
-offset_bottom = 75.0
+offset_left = -132.0
+offset_top = 24.0
+offset_right = -28.0
+offset_bottom = 70.0
 grow_horizontal = 0
 theme_override_constants/separation = 10
-alignment = 2
 
 [node name="MusicBtn" type="Button" parent="TopControls"]
-custom_minimum_size = Vector2(38, 38)
+custom_minimum_size = Vector2(46, 46)
 layout_mode = 2
-tooltip_text = "Увімкнути/Вимкнути Музику"
-theme_override_styles/normal = SubResource("StyleBoxFlat_btn_sec")
-theme_override_styles/hover = SubResource("StyleBoxFlat_btn_sec_hover")
-icon = ExtResource("3_music_icon")
+tooltip_text = "Музика"
+theme_type_variation = &"IconButton"
+icon = ExtResource("7_music")
 icon_alignment = 1
 expand_icon = true
 
 [node name="SFXBtn" type="Button" parent="TopControls"]
-custom_minimum_size = Vector2(38, 38)
+custom_minimum_size = Vector2(46, 46)
 layout_mode = 2
-tooltip_text = "Увімкнути/Вимкнути Звукові Ефекти"
-theme_override_styles/normal = SubResource("StyleBoxFlat_btn_sec")
-theme_override_styles/hover = SubResource("StyleBoxFlat_btn_sec_hover")
-icon = ExtResource("4_sfx_icon")
+tooltip_text = "Звуки"
+theme_type_variation = &"IconButton"
+icon = ExtResource("8_sfx")
 icon_alignment = 1
 expand_icon = true
 
 [node name="TitleBox" type="VBoxContainer" parent="."]
 layout_mode = 1
-anchors_preset = 5
-anchor_left = 0.5
-anchor_right = 0.5
-offset_left = -450.0
-offset_top = 110.0
-offset_right = 450.0
-offset_bottom = 250.0
-grow_horizontal = 2
-theme_override_constants/separation = 12
-alignment = 1
+offset_left = 72.0
+offset_top = 150.0
+offset_right = 640.0
+offset_bottom = 290.0
+theme_override_constants/separation = 0
 
-[node name="MainTitle" type="Label" parent="TitleBox"]
+[node name="MainTitle" type="Control" parent="TitleBox"]
+custom_minimum_size = Vector2(0, 76)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.2, 0.9, 1, 1)
-theme_override_colors/font_shadow_color = Color(0, 0.4, 0.8, 0.7)
-theme_override_constants/shadow_offset_x = 0
-theme_override_constants/shadow_offset_y = 0
-theme_override_constants/shadow_outline_size = 14
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 46
+script = ExtResource("2_glitch")
 text = "CYBER SURVIVOR"
-horizontal_alignment = 1
+font_size = 62
+centered = false
 
-[node name="SubTitle" type="Label" parent="TitleBox"]
+[node name="SubRow" type="HBoxContainer" parent="TitleBox"]
 layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.7, 0.25, 1)
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 16
-text = "◆ PROTOCOL ZERO // АНДРОЇД-ЕКСПАНСІЯ ◆"
-horizontal_alignment = 1
+theme_override_constants/separation = 12
+
+[node name="Bar" type="ColorRect" parent="TitleBox/SubRow"]
+custom_minimum_size = Vector2(56, 6)
+layout_mode = 2
+size_flags_vertical = 4
+color = Color(1, 0, 0.235, 1)
+
+[node name="SubTitle" type="Label" parent="TitleBox/SubRow"]
+layout_mode = 2
+theme_type_variation = &"HeadingLabel"
+theme_override_colors/font_color = Color(0.91, 0.91, 0.94, 1)
+theme_override_font_sizes/font_size = 20
+text = "PROTOCOL ZERO"
 
 [node name="VBoxContainer" type="VBoxContainer" parent="."]
 layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -190.0
-offset_top = 35.0
-offset_right = 190.0
-offset_bottom = 230.0
-grow_horizontal = 2
-grow_vertical = 2
+offset_left = 72.0
+offset_top = 340.0
+offset_right = 392.0
+offset_bottom = 560.0
 theme_override_constants/separation = 14
-alignment = 1
 
 [node name="StartBtn" type="Button" parent="VBoxContainer"]
-custom_minimum_size = Vector2(0, 52)
+custom_minimum_size = Vector2(0, 58)
 layout_mode = 2
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 15
-theme_override_styles/normal = SubResource("StyleBoxFlat_btn_primary")
-theme_override_styles/hover = SubResource("StyleBoxFlat_btn_primary_hover")
-text = "[ > EXECUTE_MISSION_ARC-01 ]"
+theme_type_variation = &"PrimaryButton"
+theme_override_font_sizes/font_size = 24
+text = "СТАРТ"
+icon = ExtResource("4_play")
+alignment = 0
 
 [node name="InfoBtn" type="Button" parent="VBoxContainer"]
-custom_minimum_size = Vector2(0, 42)
+custom_minimum_size = Vector2(0, 46)
 layout_mode = 2
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 12
-theme_override_styles/normal = SubResource("StyleBoxFlat_btn_sec")
-theme_override_styles/hover = SubResource("StyleBoxFlat_btn_sec_hover")
-text = "[ ? ТЕХНОЛОГІЧНА_БАЗА ]"
+text = "КЕРУВАННЯ"
+icon = ExtResource("5_info")
+alignment = 0
 
 [node name="CreditsBtn" type="Button" parent="VBoxContainer"]
-custom_minimum_size = Vector2(0, 42)
+custom_minimum_size = Vector2(0, 46)
 layout_mode = 2
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 12
-theme_override_styles/normal = SubResource("StyleBoxFlat_btn_sec")
-theme_override_styles/hover = SubResource("StyleBoxFlat_btn_sec_hover")
-text = "[ 📜 ДЖЕРЕЛА_РЕСУРСІВ_CC0 ]"
+text = "АВТОРИ"
+icon = ExtResource("6_credits")
+alignment = 0
 
 [node name="FooterLabel" type="Label" parent="."]
 layout_mode = 1
-anchors_preset = 7
-anchor_left = 0.5
+anchors_preset = 2
 anchor_top = 1.0
-anchor_right = 0.5
 anchor_bottom = 1.0
-offset_left = -400.0
-offset_top = -45.0
-offset_right = 400.0
-offset_bottom = -15.0
-grow_horizontal = 2
+offset_left = 72.0
+offset_top = -48.0
+offset_right = 472.0
+offset_bottom = -26.0
 grow_vertical = 0
-theme_override_colors/font_color = Color(0.35, 0.55, 0.75, 0.8)
-theme_override_font_sizes/font_size = 12
-text = "[ ОРБІТАЛЬНА СТАНЦІЯ AETHELGARD ] • НУБіП України • Godot 4 • Web Ready"
-horizontal_alignment = 1
+theme_type_variation = &"DimLabel"
+text = "НУБіП України"
 
 [node name="InfoDialog" type="PanelContainer" parent="."]
 visible = false
@@ -218,37 +150,55 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -360.0
-offset_top = -240.0
-offset_right = 360.0
-offset_bottom = 240.0
+offset_left = -330.0
+offset_top = -230.0
+offset_right = 330.0
+offset_bottom = 230.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_dialog")
+theme_type_variation = &"CyberPanel"
 
 [node name="Margin" type="MarginContainer" parent="InfoDialog"]
 layout_mode = 2
-theme_override_constants/margin_left = 25
-theme_override_constants/margin_top = 22
-theme_override_constants/margin_right = 25
-theme_override_constants/margin_bottom = 22
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 4
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 4
 
 [node name="VBox" type="VBoxContainer" parent="InfoDialog/Margin"]
 layout_mode = 2
-theme_override_constants/separation = 15
+theme_override_constants/separation = 12
+
+[node name="Header" type="HBoxContainer" parent="InfoDialog/Margin/VBox"]
+layout_mode = 2
+
+[node name="DialogTitle" type="Label" parent="InfoDialog/Margin/VBox/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"HeadingLabel"
+text = "КЕРУВАННЯ"
+
+[node name="CloseInfoBtn" type="Button" parent="InfoDialog/Margin/VBox/Header"]
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+tooltip_text = "Закрити"
+theme_type_variation = &"IconButton"
+icon = ExtResource("9_close")
+icon_alignment = 1
+expand_icon = true
 
 [node name="InfoText" type="RichTextLabel" parent="InfoDialog/Margin/VBox"]
 layout_mode = 2
 size_flags_vertical = 3
 bbcode_enabled = true
-text = "Інформація про гру..."
+text = "..."
 
-[node name="CloseInfoBtn" type="Button" parent="InfoDialog/Margin/VBox"]
-custom_minimum_size = Vector2(170, 40)
-layout_mode = 2
-size_flags_horizontal = 4
-theme_override_fonts/font = ExtResource("2_font")
-theme_override_font_sizes/font_size = 13
-theme_override_styles/normal = SubResource("StyleBoxFlat_btn_primary")
-theme_override_styles/hover = SubResource("StyleBoxFlat_btn_primary_hover")
-text = "ЗАКРИТИ"
+[node name="CRT" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+material = SubResource("ShaderMaterial_crt")

@@ -34,28 +34,18 @@ func fire_spread_salvo() -> void:
 	AudioManager.play_sfx("laser", 0.1, 2.0)
 
 func die() -> void:
-	# Heavy boss explosion
-	var exp_scene = preload("res://scenes/effects/explosion.tscn")
-	var exp_node = exp_scene.instantiate()
-	exp_node.global_position = global_position
-	exp_node.max_radius = 90.0
-	exp_node.blast_color = Color(1.0, 0.3, 0.1)
-	get_parent().add_child(exp_node)
+	if is_dead:
+		return
+	is_dead = true
+	# Heavy unit explosion
+	EnemyBase.spawn_explosion(get_parent(), global_position, 90.0, Color(1.0, 0.3, 0.1), true)
 	
 	AudioManager.play_sfx("heavy_explosion", 0.05, 4.0)
 	GameManager.add_kill()
 	
-	# Boss drops rich loot
-	var scrap_scene = preload("res://scenes/pickups/nanite_scrap.tscn")
+	# Heavy unit drops rich loot
 	for i in range(5):
-		var gold = scrap_scene.instantiate()
-		gold.global_position = global_position + Vector2(randf_range(-30, 30), randf_range(-30, 30))
-		gold.setup(1) # GOLD
-		get_parent().call_deferred("add_child", gold)
-		
-	var rep = scrap_scene.instantiate()
-	rep.global_position = global_position
-	rep.setup(2) # REPAIR
-	get_parent().call_deferred("add_child", rep)
+		EnemyBase.spawn_pickup(get_parent(), global_position + Vector2(randf_range(-30, 30), randf_range(-30, 30)), 1) # GOLD
+	EnemyBase.spawn_pickup(get_parent(), global_position, 2) # REPAIR
 	
 	queue_free()
