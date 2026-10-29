@@ -296,8 +296,10 @@ func cancel_fire() -> void:
 		FireDirector.release(self)
 		fire_state = FireState.IDLE
 
-func _target_ok(t: Object) -> bool:
-	return t != null and is_instance_valid(t) and not ("is_dead" in t and t.is_dead)
+# Untyped on purpose: the aim target can be a turret that was freed while aiming,
+# and a freed object passed to a typed Object parameter is a runtime error
+func _target_ok(t) -> bool:
+	return is_instance_valid(t) and not ("is_dead" in t and t.is_dead)
 
 # Mind Control: no token needed; aims at the nearest other enemy
 func _aim_for_player_side() -> void:
